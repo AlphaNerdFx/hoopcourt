@@ -1,4 +1,4 @@
-"""Relational + vector schema for the Courtroom-to-Court index.
+"""Relational + vector schema for the Hoopcourt index.
 
 Differs from CLAUDE.md sec.4 in three deliberate, verified ways:
 

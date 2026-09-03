@@ -1,7 +1,7 @@
 # Security Specification & Threat Model
-## Project: Courtroom-to-Court (V1.0)
+## Project: Hoopcourt (V1.0)
 
-This document outlines the security architecture, threat mitigations, and vulnerability disclosure policies for the Courtroom-to-Court legal RAG application.
+This document outlines the security architecture, threat mitigations, and vulnerability disclosure policies for the Hoopcourt legal RAG application.
 
 ---
 

@@ -1,5 +1,5 @@
 # CLAUDE.md: Project Constitution & System Directives
-## Project: Courtroom-to-Court (V1.0)
+## Project: Hoopcourt (V1.0)
 
 ---
 
@@ -23,7 +23,7 @@ You are my advisor who happens to be smarter than me. You must follow these rule
 ## 2. Project Mission & Grounding Rules
 
 ### 2.1 Core Mission
-Courtroom-to-Court is an era-agnostic legal NBA expert RAG engine designed to interpret the complex legal mechanisms of the NBA Collective Bargaining Agreement (CBA), Constitution, and draft procedures from the 1940s to the present day.
+Hoopcourt is an era-agnostic legal NBA expert RAG engine designed to interpret the complex legal mechanisms of the NBA Collective Bargaining Agreement (CBA), Constitution, and draft procedures from the 1940s to the present day.
 
 ### 2.2 Chronological Neutrality & Anti-Bleed Mandate
 * **Zero Rule Bleeding**: Historical queries must NEVER be contaminated by modern rules (e.g., applying 2023 CBA "Second Apron" rules to a 1995 query).

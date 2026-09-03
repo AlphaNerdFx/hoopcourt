@@ -81,5 +81,5 @@ Defects found in the pre-existing specification, each verified before changing:
 - Extension loading is re-disabled immediately after `sqlite-vec` loads.
 - All SQL values are bound parameters.
 
-[Unreleased]: https://github.com/OWNER/REPO/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/OWNER/REPO/releases/tag/v0.1.0
+[Unreleased]: https://github.com/AlphaNerdFx/hoopcourt/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/AlphaNerdFx/hoopcourt/releases/tag/v0.1.0

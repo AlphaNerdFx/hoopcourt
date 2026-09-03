@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Courtroom-to-Court",
+    title="Hoopcourt",
     description="Era-aware retrieval over NBA governing documents.",
     version="1.0.0",
     lifespan=lifespan,

@@ -2029,7 +2029,7 @@ def save_verified_chunk(conn: sqlite3.Connection, chunk_id: int, updated_text: s
         st.error(f"Transaction failed and was rolled back: {e}")
 
 # Streamlit App Execution Layout
-st.set_page_index = "Courtroom-to-Court Admin Panel"
+st.set_page_index = "Hoopcourt Admin Panel"
 st.title("🏀 NBA Legal Expert: OCR Correction Panel")
 st.write("Review, correct, and verify scanned CBA chunks before vector indexing.")
 

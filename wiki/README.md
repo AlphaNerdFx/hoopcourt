@@ -4,7 +4,7 @@ GitHub wikis live in a separate repository, `<repo>.wiki.git`, so these pages ar
 kept here under version control and pushed there.
 
 ```bash
-git clone https://github.com/OWNER/REPO.wiki.git /tmp/wiki
+git clone https://github.com/AlphaNerdFx/hoopcourt.wiki.git /tmp/wiki
 cp wiki/*.md /tmp/wiki/
 cd /tmp/wiki && git add -A && git commit -m "Update wiki" && git push
 ```

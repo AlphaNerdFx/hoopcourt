@@ -1,4 +1,6 @@
-# Courtroom-to-Court
+# Hoopcourt
+
+**Every NBA rule, as it stood.**
 
 An era-aware retrieval engine over NBA governing documents, the Collective
 Bargaining Agreements, the Constitution, the rulebook, and the draft rules, that

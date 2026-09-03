@@ -1,4 +1,6 @@
-# Courtroom-to-Court
+# Hoopcourt
+
+Every NBA rule, as it stood.
 
 An era-aware retrieval engine over NBA governing documents. Ask it about 1975 and
 it answers from the rules in force in 1975, not from the 2023 CBA.

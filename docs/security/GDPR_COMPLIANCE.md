@@ -1,5 +1,5 @@
 # GDPR Technical Compliance Specification
-## Project: Courtroom-to-Court (V1.0)
+## Project: Hoopcourt (V1.0)
 
 This document specifies the technical architecture and data processing boundaries required to conform with the General Data Protection Regulation (GDPR) (EU 2016/679) for both Local (offline) and Cloud (API-backed) execution profiles. [Certain]
 
@@ -7,7 +7,7 @@ This document specifies the technical architecture and data processing boundarie
 
 ## 1. Data Classification Map
 
-The Courtroom-to-Court RAG architecture processes three distinct categories of data:
+The Hoopcourt RAG architecture processes three distinct categories of data:
 
 | Data Category | Description | Data Type | Storage Location | GDPR Status |
 | :--- | :--- | :--- | :--- | :--- |

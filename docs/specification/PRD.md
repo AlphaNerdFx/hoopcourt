@@ -1,4 +1,4 @@
-# Project PRD: Courtroom-to-Court (V1.0)
+# Project PRD: Hoopcourt (V1.0)
 
 ## 1. Problem Statement & Success Metrics
 

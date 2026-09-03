@@ -32,7 +32,10 @@ First tagged release. Era-aware retrieval over NBA governing documents, covering
 - `source_tier` on documents (`primary`, `judicial`, `timeline`) so a citation
   states what authority it carries.
 - Second retrieval channel for the curated timeline, kept separate from
-  authoritative sources and filtered by a measured relevance threshold.
+  authoritative sources and filtered by a measured relevance threshold. It
+  widens beyond the routed era only when that era has no entry of its own, so an
+  undated question such as "when was the salary cap introduced?" is answered
+  without letting a 1985 entry answer a 1975 question.
 - Coverage block on `/query` responses that distinguishes an uncovered era from
   a failed match.
 - Corpus tooling: `fetch_corpus.py` (status, checksums, `--check-urls`),

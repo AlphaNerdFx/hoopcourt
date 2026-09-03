@@ -126,4 +126,23 @@ def retrieve_timeline(
     rows = retrieve_segmented_context(
         conn, query_embedding, route_data, k=k, tiers=(TIMELINE_TIER,)
     )
-    return [r for r in rows if r["distance"] <= max_distance]
+    rows = [r for r in rows if r["distance"] <= max_distance]
+    if rows:
+        return rows
+
+    # Nothing dated to the routed era. Only now widen to the whole timeline,
+    # because "when was the salary cap introduced?" carries no year, routes to
+    # the current season, and the entry that answers it is scoped 1983-1994.
+    #
+    # The fallback is deliberately conditional. Searching the whole timeline
+    # unconditionally would let a 1985 entry answer a 1975 question, which is
+    # the anachronism this project exists to prevent. It can only fire when the
+    # routed era has no timeline entry of its own to contradict, which in this
+    # corpus means a season from 1995 onward.
+    all_timeline = [r["id"] for r in conn.execute(
+        "SELECT id FROM documents WHERE source_tier = ? ORDER BY id",
+        (TIMELINE_TIER,))]
+    if not all_timeline:
+        return []
+    wide = retrieve_by_documents(conn, query_embedding, all_timeline, k=k)
+    return [r for r in wide if r["distance"] <= max_distance]

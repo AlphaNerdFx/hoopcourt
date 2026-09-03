@@ -1,0 +1,246 @@
+# Corpus manifest: the document catalogue and its era windows.
+#
+# `start_season`/`end_season` are the seasons a document GOVERNS, written as the
+# starting year of the season (2023 means the 2023-24 season). These windows are
+# the temporal routing logic -- a wrong window here is a rule-bleeding bug that
+# no amount of retrieval tuning can fix -- so each carries its reasoning.
+#
+# Within a document type the CBA windows are contiguous and non-overlapping:
+#   1995-1998 | 1999-2004 | 2005-2010 | 2011-2016 | 2017-2022 | 2023-2029
+# Overlap ACROSS types (a Constitution and a CBA both valid in 2020) is correct
+# and expected; overlap WITHIN a type would be the bug.
+#
+# `file` is relative to data/. `source_url` must point to an official or
+# public-record source -- it is what scripts/fetch_corpus.py downloads and what
+# DATA_SOURCES.md documents. Never a personal cloud-storage link (PRD sec.2).
+
+documents:
+  # ---------------- Current Governing ----------------
+  - file: "Current Governing Documents/2023 NBA CBA.pdf"
+    doc_name: "2023 NBA CBA"
+    category: "Current Governing"
+    start_season: 2023
+    end_season: 2029          # runs 2023-24 through 2029-30 (opt-out after 2028-29)
+    source_url: "https://imgix.cosmicjs.com/25da5eb0-15eb-11ee-b5b3-fbd321202bdf-Final-2023-NBA-Collective-Bargaining-Agreement-6-28-23.pdf"
+
+  - file: "Current Governing Documents/NBA Constitution 2024.pdf"
+    doc_name: "NBA Constitution 2024"
+    category: "Current Governing"
+    start_season: 2024
+    end_season: 2029          # supersedes the 2019 Constitution
+    source_url: "https://official.nba.com/wp-content/uploads/sites/4/2024/06/NBA-Consitution-By-Laws-June-2024.pdf"
+
+  - file: "Current Governing Documents/Official 2025-26 Rulebook.pdf"
+    doc_name: "Official 2025-26 Rulebook"
+    category: "Current Governing"
+    start_season: 2025
+    end_season: 2025          # rulebooks are reissued annually
+    source_url: "https://ak-static.cms.nba.com/wp-content/uploads/sites/4/2025/10/Official-2025-26-NBA-Playing-Rules.pdf"
+
+  - file: "Current Governing Documents/2025-26 NBA Officials Guide.pdf"
+    doc_name: "2025-26 NBA Officials Guide"
+    category: "Current Governing"
+    start_season: 2025
+    end_season: 2025
+    source_url: "https://official.nba.com/wp-content/uploads/sites/4/2025/10/2025-26-NBA-Officials-Guide.pdf"
+
+  - file: "Current Governing Documents/2025-26 NBA Officiating Staff.pdf"
+    doc_name: "2025-26 NBA Officiating Staff"
+    category: "Current Governing"
+    start_season: 2025
+    end_season: 2025
+    source_url: "https://official.nba.com/wp-content/uploads/sites/4/2025/10/2025-26-NBA-Officiating-Staff.pdf"
+
+  # ---------------- Current Operational ----------------
+  - file: "Current Operational Documents/2024-25 CBA 101.pdf"
+    doc_name: "2024-25 CBA 101"
+    category: "Current Operational"
+    start_season: 2024
+    end_season: 2029          # plain-language summary of the 2023 CBA
+    source_url: "https://official.nba.com/wp-content/uploads/sites/4/2024/11/2024-25-CBA-101.pdf"
+
+  - file: "Current Operational Documents/NBPA Agents Governing Regulations.pdf"
+    doc_name: "NBPA Agents Governing Regulations"
+    category: "Current Operational"
+    start_season: 2023
+    end_season: 2029
+    source_url: "https://imgix.cosmicjs.com/cd844850-97c7-11f0-91fa-d9e1671c2776-NBPA-REGULATIONS-GOVERNING-PLAYER-AGENTS-09-2025.pdf"
+
+  - file: "Current Operational Documents/2025-26 NBA Concussion.pdf"
+    doc_name: "2025-26 NBA Concussion Policy"
+    category: "Current Operational"
+    start_season: 2025
+    end_season: 2025
+    source_url: "https://official.nba.com/wp-content/uploads/sites/4/2025/10/2025-26-NBA-Concussion-Summary.pdf"
+
+  - file: "Current Operational Documents/2026 NBA UAC.pdf"
+    doc_name: "2026 NBA Uniform Agent Certification"
+    category: "Current Operational"
+    start_season: 2025
+    end_season: 2026
+    source_url: "https://ak-static.cms.nba.com/wp-content/uploads/sites/4/2026/03/2026-NBA-Undergraduate-Advisory-Committee-Brochure.pdf"
+
+  - file: "Current Operational Documents/NBA 3 2 1 Draft Lottery 2026.pdf"
+    doc_name: "NBA Draft Lottery 2026 Probabilities"
+    category: "Current Operational"
+    start_season: 2025
+    end_season: 2026          # governs the lottery held after the 2025-26 season
+    source_url: "https://ak-static.cms.nba.com/wp-content/uploads/sites/46/2026/05/NBA-3-2-1-Draft-Lottery.pdf"
+
+  - file: "Current Operational Documents/NBA Player Contract Exhibit A.pdf"
+    doc_name: "NBA Uniform Player Contract (2017 CBA Exhibit A)"
+    category: "Historical"
+    start_season: 2017
+    end_season: 2022
+    # This is Exhibit A to the *2017* CBA. The contract is a standing template,
+    # but the specifics it embeds -- maximum salary percentages, apron
+    # consequences, option and bonus mechanics -- were changed by the 2023 CBA
+    # and are NOT updated here. Scoped to 2017-2022 for that reason: a window of
+    # 2017-2030 let a 2024 question retrieve stale terms under a citation that
+    # looks current, which is rule bleeding wearing a template's clothes.
+    #
+    # Nothing is lost by narrowing it. The 2023 CBA contains its own Exhibit A
+    # (113 indexed chunks reference the Uniform Player Contract; the exhibits
+    # begin around p. 560), so 2023+ contract questions are already covered by
+    # the governing document itself.
+    #
+    # TODO(source): scribd.com is a third-party upload host, which DATA_SOURCES.md
+    # rules out. Replace with the NBPA copy or a court-record source.
+    source_url: "https://nba-contract-template.pdffiller.com"
+
+  # ---------------- Historical ----------------
+  - file: "Historical Documents/CBA 1995.pdf"
+    doc_name: "CBA 1995"
+    category: "Historical"
+    start_season: 1995
+    end_season: 1998          # 1995-96 to 1998-99; owners terminated early (lockout)
+    source_url: "https://atlhawksfanatic.github.io/research/CBA/1995-NBA-NBPA-Collective-Bargaining-Agreement.pdf"
+
+  - file: "Historical Documents/NBPA CBA 1999.pdf"
+    doc_name: "NBPA CBA 1999"
+    category: "Historical"
+    start_season: 1999
+    end_season: 2004          # 1999-2000 through 2004-05
+    source_url: "https://atlhawksfanatic.github.io/research/CBA/1999-NBA-NBPA-Collective-Bargaining-Agreement.pdf"
+
+  - file: "Historical Documents/CBA 2005.pdf"
+    doc_name: "CBA 2005"
+    category: "Historical"
+    start_season: 2005
+    end_season: 2010          # 2005-06 through 2010-11
+    source_url: "https://atlhawksfanatic.github.io/research/CBA/2005-NBA-NBPA-Collective-Bargaining-Agreement.pdf"
+
+  - file: "Historical Documents/CBA 2011.pdf"
+    doc_name: "CBA 2011"
+    category: "Historical"
+    start_season: 2011
+    end_season: 2016          # 2011-12 through 2016-17 (opt-out exercised)
+    source_url: "https://cosmic-s3.imgix.net/3d8ade10-8e11-11e9-875d-3d44e94ae33f-2011-NBA-NBPA-Collective-Bargaining-Agreement.pdf"
+
+  - file: "Historical Documents/CBA 2017.pdf"
+    doc_name: "CBA 2017"
+    category: "Historical"
+    start_season: 2017
+    end_season: 2022          # 2017-18 through 2023-24; terminated early for the 2023 CBA
+    source_url: "https://cosmic-s3.imgix.net/3c7a0a50-8e11-11e9-875d-3d44e94ae33f-2017-NBA-NBPA-Collective-Bargaining-Agreement.pdf"
+
+  - file: "Historical Documents/NBA Constitution 2019.pdf"
+    doc_name: "NBA Constitution 2019"
+    category: "Historical"
+    start_season: 2019
+    end_season: 2023          # superseded by the 2024 Constitution
+    source_url: "https://ak-static.cms.nba.com/wp-content/uploads/sites/4/2019/09/NBA-Constitution-By-Laws-September-2019-1.pdf"
+
+  - file: "Historical Documents/NBA Constitution 2012.PDF"
+    doc_name: "NBA Constitution 2012"
+    category: "Historical"
+    start_season: 2012
+    end_season: 2018          # superseded by the 2019 Constitution, which starts
+                              # at 2019 -- an end_season of 2019 would make both
+                              # documents govern that season simultaneously
+    # Verified: 92 pages, title page dated "May 29, 2012" -- the same document as
+    # the local copy. The remote is a different printing (483,144 vs 466,394
+    # bytes), so --check-urls reports a size difference by design; source_verified
+    # records that a human confirmed the edition matches.
+    source_url: "https://ak-static-int.nba.com/wp-content/uploads/sites/3/2015/12/NBA-Constitution-and-By-Laws.pdf"
+    source_verified: true
+
+  - file: "Historical Documents/Draft Probabilities 2003.pdf"
+    doc_name: "Draft Probabilities 2003"
+    category: "Historical"
+    start_season: 2003
+    end_season: 2003
+    source_url: "https://www.ajuronline.org/uploads/Volume%202/Issue%203/23E-FlorkeArt.pdf"
+
+  # ---------------- Judicial (pre-1995 coverage) ----------------
+  # No public copy of any NBA CBA before 1995 appears to exist. The litigation
+  # that construed those agreements does, in full and in the public domain, so
+  # these opinions carry the pre-1995 era. They are `source_tier: judicial`:
+  # a primary legal source, but one that *describes* the rule rather than being
+  # it, and citations must say so.
+  #
+  # Each window is the period whose rules the opinion authoritatively states --
+  # an editorial judgement, like the CBA windows above. Overlap between opinions
+  # is expected and harmless; they are not a supersession lineage.
+  #
+  # Text comes from the Caselaw Access Project (static.case.law): open, static,
+  # unauthenticated, public domain. Fetch with scripts/fetch_opinions.py.
+
+  - file: "Court Opinions/haywood-v-nba-1971.txt"
+    doc_name: "Haywood v. NBA (U.S. 1971)"
+    category: "Historical"
+    source_tier: "judicial"
+    start_season: 1966
+    end_season: 1971          # the four-year draft-eligibility rule it suspended
+    source_url: "https://static.case.law/us/401/cases/1204-01.json"
+
+  - file: "Court Opinions/denver-rockets-v-all-pro-1971.txt"
+    doc_name: "Denver Rockets v. All-Pro Management (C.D. Cal. 1971)"
+    category: "Historical"
+    source_tier: "judicial"
+    start_season: 1966
+    end_season: 1971          # struck down the same four-year rule on antitrust grounds
+    source_url: "https://static.case.law/f-supp/325/cases/1049-01.json"
+
+  - file: "Court Opinions/robertson-v-nba-1975.txt"
+    doc_name: "Robertson v. NBA (S.D.N.Y. 1975)"
+    category: "Historical"
+    source_tier: "judicial"
+    start_season: 1964
+    end_season: 1976          # reserve clause, uniform contract option, college
+                              # draft, and the ABA merger it enjoined
+    source_url: "https://static.case.law/f-supp/389/cases/0867-01.json"
+
+  - file: "Court Opinions/robertson-v-nba-1977.txt"
+    doc_name: "Robertson v. NBA (2d Cir. 1977)"
+    category: "Historical"
+    source_tier: "judicial"
+    start_season: 1976
+    end_season: 1982          # the settlement that ended the reserve clause and
+                              # introduced compensated free agency
+    source_url: "https://static.case.law/f2d/556/cases/0682-01.json"
+
+  - file: "Court Opinions/wood-v-nba-1987.txt"
+    doc_name: "Wood v. NBA (2d Cir. 1987)"
+    category: "Historical"
+    source_tier: "judicial"
+    start_season: 1983
+    end_season: 1987          # the 1983 CBA's draft, salary cap and first refusal
+    source_url: "https://static.case.law/f2d/809/cases/0954-01.json"
+
+  - file: "Court Opinions/bridgeman-v-nba-1987.txt"
+    doc_name: "Bridgeman v. NBA (D.N.J. 1987)"
+    category: "Historical"
+    source_tier: "judicial"
+    start_season: 1983
+    end_season: 1988          # salary cap and right of first refusal after the
+                              # 1983 CBA expired
+    source_url: "https://static.case.law/f-supp/675/cases/0960-01.json"
+
+  - file: "Court Opinions/nba-v-williams-1995.txt"
+    doc_name: "NBA v. Williams (2d Cir. 1995)"
+    category: "Historical"
+    source_tier: "judicial"
+    start_season: 1988
+    end_season: 1994          # which 1988 CBA terms survived its expiration
+    source_url: "https://static.case.law/f3d/45/cases/0684-01.json"

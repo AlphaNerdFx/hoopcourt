@@ -1,0 +1,97 @@
+{
+  "2023 NBA CBA": {
+    "bytes": 2850534,
+    "file": "Current Governing Documents/2023 NBA CBA.pdf",
+    "sha256": "bf178ca0f2d64f9dfe6fde095d3ae43d576b12e19ce7a679618d632584f7ab32"
+  },
+  "2024-25 CBA 101": {
+    "bytes": 528881,
+    "file": "Current Operational Documents/2024-25 CBA 101.pdf",
+    "sha256": "9e643abebd0710904a9b221b71ee76ad0eab96d18fb629a187743880dda8e83f"
+  },
+  "2025-26 NBA Concussion Policy": {
+    "bytes": 167618,
+    "file": "Current Operational Documents/2025-26 NBA Concussion.pdf",
+    "sha256": "5dbe953b7f49b6398f65b7fe1ba3696c5685733ef35bab67540a92a191b6639e"
+  },
+  "2025-26 NBA Officials Guide": {
+    "bytes": 9623273,
+    "file": "Current Governing Documents/2025-26 NBA Officials Guide.pdf",
+    "sha256": "677bfe6b81f27dba278038db01e97eabdbf974c2a34016293a9a657ab991863c"
+  },
+  "2025-26 NBA Officiating Staff": {
+    "bytes": 61277,
+    "file": "Current Governing Documents/2025-26 NBA Officiating Staff.pdf",
+    "sha256": "7169b94b574ef6468b0deb96b2f34bfc295db559390f50cfa0f808cd1ea0e37a"
+  },
+  "2026 NBA Uniform Agent Certification": {
+    "bytes": 2497852,
+    "file": "Current Operational Documents/2026 NBA UAC.pdf",
+    "sha256": "bfa65737d6a39c79fded3b2374be1969f38ec43939575d0d196b26405791f7b1"
+  },
+  "CBA 1995": {
+    "bytes": 7393092,
+    "file": "Historical Documents/CBA 1995.pdf",
+    "sha256": "9ad19f0cc137e9e8d8b82e39abf2ff96ab8beadf48434b22a0070946321f2c44"
+  },
+  "CBA 2005": {
+    "bytes": 2486893,
+    "file": "Historical Documents/CBA 2005.pdf",
+    "sha256": "1c2a5f1086ef217eb0f005d5d01704642fc4ec1cf915aa7c7ccbbd9efe6ae2de"
+  },
+  "CBA 2011": {
+    "bytes": 25970448,
+    "file": "Historical Documents/CBA 2011.pdf",
+    "sha256": "239e7b41fad3637fef1dde926ec1cd3df4e86c41f798ec515d1ffb3246d61fbb"
+  },
+  "CBA 2017": {
+    "bytes": 2186284,
+    "file": "Historical Documents/CBA 2017.pdf",
+    "sha256": "65642a3c15990696169d97e55a911cc60e7899aef0d0ecffffe2be28e10f1dfb"
+  },
+  "Draft Probabilities 2003": {
+    "bytes": 930408,
+    "file": "Historical Documents/Draft Probabilities 2003.pdf",
+    "sha256": "603bb3855a0f1c844c81238dd9f229a3fecf4c75771c56b8e406730422c40fe0"
+  },
+  "NBA Constitution 2012": {
+    "bytes": 466394,
+    "file": "Historical Documents/NBA Constitution 2012.PDF",
+    "sha256": "0d402c11cea18193b0eae022759b7f0f902bba6105117a2b7b1d6b5822d83f99"
+  },
+  "NBA Constitution 2019": {
+    "bytes": 429999,
+    "file": "Historical Documents/NBA Constitution 2019.pdf",
+    "sha256": "6accb3d9633e15e8559d13228c27ae7b3b0b81eac0894050b06256eea6da3464"
+  },
+  "NBA Constitution 2024": {
+    "bytes": 422247,
+    "file": "Current Governing Documents/NBA Constitution 2024.pdf",
+    "sha256": "be4d2781fe8fddfc5bc9028214298f742789a949dade4ead26368a4336d32ccf"
+  },
+  "NBA Draft Lottery 2026 Probabilities": {
+    "bytes": 492071,
+    "file": "Current Operational Documents/NBA 3 2 1 Draft Lottery 2026.pdf",
+    "sha256": "9f0837a902eac6f9ec4dcfed5a5b154d2ddd97eaa1e9a11be05158a84b831270"
+  },
+  "NBA Uniform Player Contract (2017 CBA Exhibit A)": {
+    "bytes": 128281,
+    "file": "Current Operational Documents/NBA Player Contract Exhibit A.pdf",
+    "sha256": "7073de7d0fb86d15138c3fdb7c18524d10be84c9625a0902e3d971d463b5eab1"
+  },
+  "NBPA Agents Governing Regulations": {
+    "bytes": 1627359,
+    "file": "Current Operational Documents/NBPA Agents Governing Regulations.pdf",
+    "sha256": "663f25d3c86213d5bd818e3a412d46ce62f169a0b85a9e696388d3192bc703ea"
+  },
+  "NBPA CBA 1999": {
+    "bytes": 667961,
+    "file": "Historical Documents/NBPA CBA 1999.pdf",
+    "sha256": "5b19c69975389265121be3a1ee47badcc3390d5e5a7f56839e9e62b8b9e8a349"
+  },
+  "Official 2025-26 Rulebook": {
+    "bytes": 1653286,
+    "file": "Current Governing Documents/Official 2025-26 Rulebook.pdf",
+    "sha256": "3def8612e88622e3bd6cd0e53801a5fb3a4543ccaaade0670216094e0e962a0c"
+  }
+}

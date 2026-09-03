@@ -1,0 +1,293 @@
+# Curated timeline of landmark NBA rule changes.
+#
+# CLAUDE.md sec.2.2 names "verified historical JSON timelines" as a grounding
+# source alongside retrieved chunks. This file is that source. It exists because
+# no public copy of any NBA collective bargaining agreement before 1995 appears
+# to survive: the court opinions in corpus_manifest.yaml carry 1964-1994, and
+# these entries carry what the opinions do not reach.
+#
+# Every entry is a claim this project is making, so every entry carries a
+# citation and a confidence:
+#
+#   high    the cited court opinion states this directly, and that opinion is in
+#           the index -- a reader can retrieve it and check
+#   medium  drawn from the league's own published history; true and well
+#           documented, but not verifiable inside this corpus. Answers must say
+#           so, which is why source_tier renders these as "curated timeline
+#           entry" rather than as a governing document.
+#
+# Season windows are the seasons or draft years during which the rule was
+# operative, inclusive and slightly generous at the edges. A timeline entry is
+# meant to be *found*, not to arbitrate a boundary -- deciding which agreement
+# governs a season is the primary documents' job, which is why
+# db.schema.ambiguous_seasons() ignores this tier entirely.
+
+entries:
+
+  # ------------------------------------------------------------------ 1946-1965
+  - id: baa-nbl-merger
+    topic: "League formation"
+    start_season: 1946
+    end_season: 1949
+    summary: >
+      The Basketball Association of America began play in 1946. In 1949 it
+      absorbed the rival National Basketball League, and the combined league was
+      renamed the National Basketball Association.
+    citation: "NBA official league history"
+    source_url: "https://www.nba.com/news/history-nba-draft-lottery"
+    confidence: medium
+
+  - id: territorial-picks
+    topic: "Draft"
+    start_season: 1949
+    end_season: 1965
+    summary: >
+      Under the territorial pick, a team could give up its first-round selection
+      to claim a player from within roughly fifty miles of its home arena,
+      bypassing the draft entirely. The device was used to keep local college
+      stars with local franchises and was abolished after the 1965 draft.
+    citation: "NBA official draft history"
+    source_url: "https://en.wikipedia.org/wiki/Territorial_pick"
+    confidence: medium
+
+  - id: shot-clock
+    topic: "Playing rules"
+    start_season: 1954
+    end_season: 1994
+    summary: >
+      The 24-second shot clock was introduced for the 1954-55 season, requiring a
+      team to attempt a shot that hits the rim within 24 seconds of gaining
+      possession.
+    citation: "NBA official rule book, Rule 7"
+    source_url: "https://official.nba.com/rule-no-1-court-dimensions-equipment/"
+    confidence: medium
+
+  # ------------------------------------------------------------------ 1946-1976
+  - id: reserve-clause
+    topic: "Reserve clause"
+    start_season: 1946
+    end_season: 1976
+    summary: >
+      The Uniform Player Contract contained a reserve clause: when a contract
+      ended the team could renew it on its own terms, so a player was never
+      genuinely free to sign elsewhere. Robertson describes the league's system
+      as combining "the college draft, the reserve clause in the Uniform Player
+      Contract, the compensation plan attached to the reserve clause, and various
+      boycott and blacklisting techniques".
+    citation: "Robertson v. NBA, 389 F. Supp. 867 (S.D.N.Y. 1975)"
+    source_url: "https://static.case.law/f-supp/389/cases/0867-01.json"
+    confidence: high
+
+  - id: compensation-plan
+    topic: "Free agency"
+    start_season: 1946
+    end_season: 1976
+    summary: >
+      A compensation plan was attached to the reserve clause: a team signing
+      another team's former player owed compensation, set by the commissioner if
+      the clubs could not agree. The uncertainty suppressed bidding for players
+      whose contracts had expired.
+    citation: "Robertson v. NBA, 389 F. Supp. 867 (S.D.N.Y. 1975)"
+    source_url: "https://static.case.law/f-supp/389/cases/0867-01.json"
+    confidence: high
+
+  - id: four-year-rule
+    topic: "Draft eligibility"
+    start_season: 1946
+    end_season: 1971
+    summary: >
+      NBA by-law 2.05 made a player ineligible "to be drafted or to be a Player
+      until four years after he has been graduated or four years after his
+      original high school class has been graduated". A player who left college
+      early could not be signed until his class would have finished.
+    citation: "Denver Rockets v. All-Pro Management, 325 F. Supp. 1049 (C.D. Cal. 1971)"
+    source_url: "https://static.case.law/f-supp/325/cases/1049-01.json"
+    confidence: high
+
+  - id: haywood-injunction
+    topic: "Draft eligibility"
+    start_season: 1970
+    end_season: 1971
+    summary: >
+      Spencer Haywood signed with the Seattle SuperSonics before his high school
+      class had been out four years. Justice Douglas reinstated the district
+      court's injunction allowing him to play, and the four-year rule was held a
+      probable group boycott under the Sherman Act.
+    citation: "Haywood v. NBA, 401 U.S. 1204 (1971)"
+    source_url: "https://static.case.law/us/401/cases/1204-01.json"
+    confidence: high
+
+  - id: four-year-rule-struck
+    topic: "Draft eligibility"
+    start_season: 1971
+    end_season: 1971
+    summary: >
+      The court held by-law 2.05 to be a group boycott within the meaning of
+      Klor's v. Broadway-Hale Stores, ending the categorical four-year bar and
+      opening the path to hardship and early entry.
+    citation: "Denver Rockets v. All-Pro Management, 325 F. Supp. 1049 (C.D. Cal. 1971)"
+    source_url: "https://static.case.law/f-supp/325/cases/1049-01.json"
+    confidence: high
+
+  - id: aba-merger-litigation
+    topic: "ABA merger"
+    start_season: 1970
+    end_season: 1976
+    summary: >
+      The Robertson class action "began after reports in the spring of 1970 of a
+      proposed merger between the NBA and the ABA". While it was pending the
+      merger could not proceed, so the antitrust suit and the merger were settled
+      together in 1976.
+    citation: "Robertson v. NBA, 389 F. Supp. 867 (S.D.N.Y. 1975)"
+    source_url: "https://static.case.law/f-supp/389/cases/0867-01.json"
+    confidence: high
+
+  - id: aba-merger-completed
+    topic: "ABA merger"
+    start_season: 1976
+    end_season: 1976
+    summary: >
+      Four ABA franchises -- the New York Nets, Denver Nuggets, Indiana Pacers
+      and San Antonio Spurs -- joined the NBA for 1976-77. The remaining ABA
+      clubs folded and their players were distributed in a dispersal draft.
+    citation: "NBA official league history"
+    source_url: "https://www.nba.com/news/history-nba-draft-lottery"
+    confidence: medium
+
+  - id: robertson-settlement
+    topic: "Free agency"
+    start_season: 1976
+    end_season: 1976
+    summary: >
+      The Robertson antitrust class action was settled and approved under
+      Rule 23(e) on behalf of a class of the 479 players who had appeared in the
+      league while it was pending. The settlement dismantled the reserve clause
+      and replaced it with a compensated form of free agency.
+    citation: "Robertson v. NBA, 556 F.2d 682 (2d Cir. 1977)"
+    source_url: "https://static.case.law/f2d/556/cases/0682-01.json"
+    confidence: high
+
+  # ------------------------------------------------------------------ 1976-1994
+  - id: cba-1976
+    topic: "Collective bargaining"
+    start_season: 1976
+    end_season: 1979
+    summary: >
+      A collective bargaining agreement incorporating the substantive terms of the
+      Robertson settlement took effect in 1976 and expired on June 1, 1979.
+    citation: "Bridgeman v. NBA, 675 F. Supp. 960 (D.N.J. 1987)"
+    source_url: "https://static.case.law/f-supp/675/cases/0960-01.json"
+    confidence: high
+
+  - id: cba-1980
+    topic: "Collective bargaining"
+    start_season: 1980
+    end_season: 1982
+    summary: >
+      On October 10, 1980 the parties entered a multi-year agreement that again
+      expressly incorporated the Robertson settlement terms. It expired on
+      June 1, 1982.
+    citation: "Bridgeman v. NBA, 675 F. Supp. 960 (D.N.J. 1987)"
+    source_url: "https://static.case.law/f-supp/675/cases/0960-01.json"
+    confidence: high
+
+  - id: salary-cap-introduced
+    topic: "Salary cap"
+    start_season: 1983
+    end_season: 1994
+    summary: >
+      "In 1983, the NBA defendants sought for the first time to introduce the
+      salary cap", arguing it was necessary because most teams were losing money
+      against rising salaries. This is the origin of the team salary limit; it was
+      a soft cap with exceptions from the outset.
+    citation: "Bridgeman v. NBA, 675 F. Supp. 960 (D.N.J. 1987)"
+    source_url: "https://static.case.law/f-supp/675/cases/0960-01.json"
+    confidence: high
+
+  - id: right-of-first-refusal
+    topic: "Free agency"
+    start_season: 1983
+    end_season: 1994
+    summary: >
+      Alongside the salary cap, the 1983 agreement gave a player's existing team a
+      right of first refusal on offers he received, which the Bridgeman plaintiffs
+      challenged together with the cap and the college draft as antitrust
+      violations.
+    citation: "Bridgeman v. NBA, 675 F. Supp. 960 (D.N.J. 1987)"
+    source_url: "https://static.case.law/f-supp/675/cases/0960-01.json"
+    confidence: high
+
+  - id: labor-exemption-upheld
+    topic: "Antitrust"
+    start_season: 1983
+    end_season: 1994
+    summary: >
+      Leon Wood challenged the salary cap, the college draft and the ban on player
+      corporations under the Sherman Act. The Second Circuit held the terms were
+      products of arm's-length collective bargaining and so fell within the
+      non-statutory labor exemption -- the ruling that let the cap and draft stand.
+    citation: "Wood v. NBA, 809 F.2d 954 (2d Cir. 1987)"
+    source_url: "https://static.case.law/f2d/809/cases/0954-01.json"
+    confidence: high
+
+  - id: post-expiration-terms
+    topic: "Collective bargaining"
+    start_season: 1988
+    end_season: 1994
+    summary: >
+      When the 1988 agreement expired, the league continued to apply the cap, the
+      draft and first refusal. The Second Circuit held the labor exemption
+      survived expiration while the parties remained in a bargaining relationship,
+      so those terms were not immediately exposed to antitrust attack.
+    citation: "NBA v. Williams, 45 F.3d 684 (2d Cir. 1995)"
+    source_url: "https://static.case.law/f3d/45/cases/0684-01.json"
+    confidence: high
+
+  # ------------------------------------------------------------------ draft order
+  - id: coin-flip
+    topic: "Draft"
+    start_season: 1966
+    end_season: 1984
+    summary: >
+      From the 1966 draft through 1984 the first overall pick was decided by a
+      literal coin toss between the team finishing last in each division, later
+      each conference. Losing the toss meant the second pick, so the worst record
+      guaranteed nothing.
+    citation: "NBA official draft lottery history"
+    source_url: "https://www.nba.com/news/history-nba-draft-lottery"
+    confidence: medium
+
+  - id: draft-lottery-1985
+    topic: "Draft"
+    start_season: 1985
+    end_season: 1989
+    summary: >
+      The coin flip was replaced for the 1985 draft by a lottery among all
+      non-playoff teams, each with an equal chance at the first pick, drawn from
+      envelopes. Order of selection no longer followed record among lottery teams.
+    citation: "NBA official draft lottery history"
+    source_url: "https://www.nba.com/news/history-nba-draft-lottery"
+    confidence: medium
+
+  - id: weighted-lottery-1990
+    topic: "Draft"
+    start_season: 1990
+    end_season: 1994
+    summary: >
+      From 1990 the lottery was weighted so that teams with worse records received
+      more chances at the first pick, replacing the equal-odds format while
+      keeping the outcome uncertain.
+    citation: "NBA official draft lottery history"
+    source_url: "https://www.nba.com/news/history-nba-draft-lottery"
+    confidence: medium
+
+  - id: three-point-line
+    topic: "Playing rules"
+    start_season: 1979
+    end_season: 1994
+    summary: >
+      The three-point field goal was adopted for the 1979-80 season, having been
+      used earlier in the ABA.
+    citation: "NBA official rule book"
+    source_url: "https://official.nba.com/rule-no-1-court-dimensions-equipment/"
+    confidence: medium

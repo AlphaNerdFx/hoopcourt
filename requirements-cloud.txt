@@ -1,0 +1,4 @@
+# Optional: cloud generation backend (Phase 5). Bring your own API key.
+# NEVER required to run, install, test, or evaluate this project.
+-r requirements.txt
+anthropic~=0.40

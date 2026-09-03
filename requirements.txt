@@ -1,0 +1,37 @@
+# Courtroom-to-Court — core runtime dependencies
+# All permissively licensed (MIT/BSD/Apache-2.0) to stay compatible with
+# this project's MIT LICENSE. See "License note" at the bottom.
+
+# --- PDF text extraction (Phase 1) ---
+# pdfplumber (MIT) over PyMuPDF (AGPL-3.0): exposes per-word bounding boxes
+# for column-order reconstruction without AGPL copyleft on an MIT project.
+pdfplumber~=0.11.4
+
+# --- Vector engine (Phase 2) ---
+sqlite-vec~=0.1.6
+
+# --- Embeddings (Phase 2) ---
+# BAAI/bge-base-en-v1.5 (MIT, 768-dim, no trust_remote_code)
+sentence-transformers~=3.3
+
+# --- API (Phase 4) ---
+fastapi~=0.115
+uvicorn[standard]~=0.34
+pydantic~=2.10
+
+# --- Testing / eval harness ---
+pytest~=8.3
+pyyaml~=6.0
+
+# -----------------------------------------------------------------------
+# License note
+# -----------------------------------------------------------------------
+# Deliberately NOT used:
+#   PyMuPDF / fitz  -> AGPL-3.0, incompatible with MIT redistribution
+#   nomic-embed-*   -> requires trust_remote_code=True (arbitrary RCE)
+#   tiktoken        -> OpenAI BPE; wrong tokenizer for both our backends
+#
+# Generation backends are optional and live in separate files so the core
+# install stays small, free, and CPU-only:
+#   requirements-local.txt  -> llama-cpp-python (local GGUF, default)
+#   requirements-cloud.txt  -> anthropic (bring-your-own-key, never required)

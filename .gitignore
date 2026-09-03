@@ -1,0 +1,55 @@
+# ---------------------------------------------------------------
+# Copyrighted corpus — NEVER commit.
+# Users fetch these themselves via scripts/fetch_corpus.py.
+# See DATA_SOURCES.md for authorized official sources.
+# ---------------------------------------------------------------
+data/
+*.pdf
+
+# Compiled index (derived from copyrighted text — also never committed)
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Extracted intermediate text (contains copyrighted content)
+build/
+extracted/
+
+# Build logs (may echo document text in tracebacks)
+*.log
+
+# Model weights
+models/
+*.gguf
+*.safetensors
+*.bin
+
+# Python
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build-py/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Agent workspace scratch
+.workspace/

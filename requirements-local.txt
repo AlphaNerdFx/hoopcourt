@@ -1,0 +1,6 @@
+# Optional: local GGUF generation backend (Phase 5). Default generator.
+# CPU build works with no CUDA toolchain (slow but functional).
+# For CUDA: CMAKE_ARGS="-DGGML_CUDA=on" pip install -r requirements-local.txt --no-cache-dir
+-r requirements.txt
+llama-cpp-python~=0.3
+huggingface-hub~=0.27

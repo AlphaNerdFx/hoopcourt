@@ -1,0 +1,14 @@
+# Lint configuration. Deliberately narrow: this project's review standard is
+# evidence in comments, not style enforcement.
+line-length = 90
+target-version = "py310"
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",  # long lines are usually URLs or citations in docstrings
+    "B008",  # FastAPI Depends() in defaults is the framework's idiom
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["B011"]

@@ -1,0 +1,82 @@
+# Changelog
+
+All notable changes to this project are recorded here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
+this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Versions stay below 1.0.0 until a generation backend ships and the answer layer
+is measured, not just the retrieval layer.
+
+## [Unreleased]
+
+Nothing yet.
+
+## [0.1.0] - 2026-09-03
+
+First tagged release. Era-aware retrieval over NBA governing documents, covering
+1946 to 2029, with routing and isolation measured rather than asserted.
+
+### Added
+
+- Text extraction for 19 PDFs and 7 court opinions, 3,412 pages, no OCR path.
+  All documents carry a usable text layer, re-checked by `scripts/audit_corpus.py`.
+- Structure-aware chunking that tracks Article and Section per line, so citations
+  resolve to a provision rather than only a page.
+- Local embeddings (`BAAI/bge-base-en-v1.5`, MIT) and a `sqlite-vec` index.
+- Temporal router: explicit years, decade slang, and historical trigger terms
+  gated by a six-word proximity window.
+- Era-isolated retrieval using a vec0 metadata pre-filter on `doc_id`.
+- FastAPI service with `/query` and `/health`.
+- Pre-1995 coverage from public-domain court opinions (Caselaw Access Project)
+  and a curated 21-entry timeline, both era-scoped.
+- `source_tier` on documents (`primary`, `judicial`, `timeline`) so a citation
+  states what authority it carries.
+- Second retrieval channel for the curated timeline, kept separate from
+  authoritative sources and filtered by a measured relevance threshold.
+- Coverage block on `/query` responses that distinguishes an uncovered era from
+  a failed match.
+- Corpus tooling: `fetch_corpus.py` (status, checksums, `--check-urls`),
+  `fetch_opinions.py`, `audit_corpus.py`, `build_index.py`, `seed_concepts.py`.
+- Evaluation harness: 43 labelled questions across four categories, with
+  temporal isolation as a hard gate.
+- 254 unit tests.
+
+### Fixed
+
+Defects found in the pre-existing specification, each verified before changing:
+
+- Era pre-filter was a post-filter. Filtering the vec0 primary key applies `k`
+  first, returning zero rows when another era dominates the ranking. Measured at
+  200 chunks: the specified form returned 0 results, a metadata-column filter
+  returned the correct 5. This was the anti-bleed mechanism.
+- sqlite-vec returns `k` rows per document for an IN-list, grouped and not
+  globally sorted, so an outer `ORDER BY distance LIMIT k` is required.
+- Ambiguous-season clarification was wired to 2023 only. Every document boundary
+  is ambiguous; the corpus yields 15. The set is now derived, not hardcoded.
+- Unqualified questions defaulted to season 2023, making annually reissued
+  documents such as the 2025-26 Rulebook unreachable without an explicit year.
+- Extraction fused words in CBA 2017 (289 of 822 chunks) because the default
+  `x_tolerance` exceeded that document's kerning. Fused text embeds as noise.
+- `tiktoken` counted tokens for a model neither backend uses.
+- `n_ctx` of 2048 could not hold the specified prompt budget.
+- Renaming a document in the manifest stranded its previous rows in the index.
+- The "reserve clause" trigger required a context cue despite having no modern
+  sense, which suppressed correct historical routing.
+
+### Changed
+
+- Distribution model is fetch-and-build. The project ships instructions and
+  checksums; no copyrighted document or compiled index is redistributed.
+- `pdfplumber` (MIT) instead of PyMuPDF (AGPL-3.0), and Qwen2.5 (Apache-2.0) as
+  the default local model instead of Llama-3.1.
+- Ambiguous seasons return HTTP 409 with both options, not HTTP 300.
+
+### Security
+
+- Only verified chunks enter the vector index, so the withhold-until-approved
+  rule holds by construction.
+- Extension loading is re-disabled immediately after `sqlite-vec` loads.
+- All SQL values are bound parameters.
+
+[Unreleased]: https://github.com/OWNER/REPO/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/OWNER/REPO/releases/tag/v0.1.0

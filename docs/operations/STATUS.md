@@ -34,7 +34,8 @@ in_expected_docs    23/23   100.0%
 recall              22/22   100.0%
 ```
 
-Index: 19 documents, 3,412 pages, 5,522 chunks, 5,522 vectors, 0 orphaned.
+Index: 47 documents (19 primary, 7 judicial, 21 timeline), 5,760 chunks,
+5,760 vectors, 0 orphaned. Coverage runs 1946 to 2029.
 Text quality: 21/5,522 chunks with fused words (0.38%), down from 5.9% before
 D11; the remainder are genuine CamelCase in the source, not extraction failures.
 All 19 source URLs reachable and size-matched to the local files, bar one, see
@@ -79,10 +80,11 @@ the rulebook's *"Section II, Starting and Stopping of Shot Clock"* (p. 28).
   rather than a PDF. The document is also inert, never retrieved in testing,
   because CBA 2017 contains the same text and outranks it. Either source it
   properly or drop the entry; see DECISIONS.md D12/D13.
-* **Eras before 1995 are uncovered.** The corpus starts at the 1995 CBA, so
-  questions about the coin-flip era, territorial picks, or the reserve clause
-  route correctly and then correctly return nothing. The routing is right; the
-  documents are missing.
+* **Pre-1995 rests on weaker sources.** No public CBA text before 1995 appears to
+  survive, so 1946 to 1994 is carried by public-domain court opinions and 21
+  curated timeline entries. Citations declare which via `source_tier`. Eight of
+  the timeline entries are medium confidence, drawn from the league's published
+  history rather than from a document in the index.
 
 ## What the evaluation does not catch
 

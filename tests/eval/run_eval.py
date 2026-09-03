@@ -81,7 +81,8 @@ def evaluate(db_path: str, questions: list[dict], verbose: bool) -> list[Result]
         # ---- retrieval ----
         needs_retrieval = any(
             k in q for k in ("expect_documents", "forbid_documents",
-                             "expect_terms_any", "expect_empty")
+                             "expect_terms_any", "expect_empty",
+                             "expect_terms_absent")
         )
         if needs_retrieval:
             emb = embedder.embed_query(q["question"])
@@ -107,6 +108,18 @@ def evaluate(db_path: str, questions: list[dict], verbose: bool) -> list[Result]
                     stray = got_docs - expected
                     r.check("in_expected_docs", not stray and bool(chunks),
                             f"unexpected {sorted(stray)}" if stray else "no results")
+
+            if "expect_terms_absent" in q:
+                # Once an era has any coverage, retrieval always returns its
+                # nearest rows, so "returns nothing" stops being a usable test
+                # for an anachronism. What still holds is that the corpus has no
+                # text about a rule that did not exist yet: asking about the
+                # luxury tax in 1975 may surface 1970s chunks, but none of them
+                # may actually be about a luxury tax.
+                blob = " ".join(c["text"].lower() for c in chunks)
+                present = [t for t in q["expect_terms_absent"] if t.lower() in blob]
+                r.check("no_anachronism", not present,
+                        f"anachronistic term(s) surfaced: {present}")
 
             if "expect_terms_any" in q and not q.get("expect_empty"):
                 terms = [t.lower() for t in q["expect_terms_any"]]
@@ -148,7 +161,7 @@ def report(results: list[Result]) -> int:
 
     print("\nper-check:")
     for name in ("route", "year", "trigger", "no_bleed", "in_expected_docs",
-                 "recall", "refusal"):
+                 "recall", "refusal", "no_anachronism"):
         ok, n = rate(name)
         if n:
             print(f"  {name:<18} {ok:>3}/{n:<3}  {100*ok/n:5.1f}%")

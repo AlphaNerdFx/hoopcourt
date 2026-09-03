@@ -289,7 +289,8 @@ questions:
   question: "How did territorial picks let a team draft a local college player?"
   expect_route: historical_keyword_override
   expect_year: 1965
-  expect_trigger: "territorial"
+  expect_trigger: "territorial pick"   # the specific phrase wins over bare "territorial",
+                                       # which also means antitrust market division
 
 - id: trigger-decade-seventies
   category: trigger_routing
@@ -368,32 +369,19 @@ questions:
 # No document in the corpus covers these. Retrieval must return NOTHING rather
 # than the nearest plausible text -- the grounding rule (CLAUDE.md sec.2.2)
 # treats an ungrounded answer as a fatal error, not a degraded one.
-- id: refuse-1952
+- id: refuse-before-the-league
   category: refusal
-  question: "What were the luxury tax rules in 1952?"
+  # The corpus begins at 1946. Nothing precedes the league's founding.
+  question: "What were the player contract rules in 1940?"
   expect_route: strict_season_filter
-  expect_year: 1952
+  expect_year: 1940
   expect_empty: true
 
-- id: refuse-1968
+- id: refuse-1935
   category: refusal
-  question: "What was the salary cap in 1968?"
+  question: "How did the draft work in 1935?"
   expect_route: strict_season_filter
-  expect_year: 1968
-  expect_empty: true
-
-- id: refuse-1980
-  category: refusal
-  question: "How did restricted free agency work in 1980?"
-  expect_route: strict_season_filter
-  expect_year: 1980
-  expect_empty: true
-
-- id: refuse-1990
-  category: refusal
-  question: "What were the rules on rookie contracts in 1990?"
-  expect_route: strict_season_filter
-  expect_year: 1990
+  expect_year: 1935
   expect_empty: true
 
 - id: refuse-2035
@@ -403,9 +391,26 @@ questions:
   expect_year: 2035
   expect_empty: true
 
-- id: refuse-1946
+# Once an era has coverage, retrieval always returns its nearest rows, so
+# "returns nothing" no longer tests anything for a rule that did not exist yet.
+# What still holds: the corpus contains no text about that rule for that era.
+- id: anachronism-luxury-tax-1975
   category: refusal
-  question: "What were the founding rules of the BAA in 1946?"
+  question: "What were the luxury tax rules in 1975?"
   expect_route: strict_season_filter
-  expect_year: 1946
-  expect_empty: true
+  expect_year: 1975
+  expect_terms_absent: ["luxury tax"]     # the tax arrived in 2001
+
+- id: anachronism-apron-1980
+  category: refusal
+  question: "What was the second apron in 1980?"
+  expect_route: strict_season_filter
+  expect_year: 1980
+  expect_terms_absent: ["apron"]          # introduced by the 2023 CBA
+
+- id: anachronism-two-way-1968
+  category: refusal
+  question: "How did two-way contracts work in 1968?"
+  expect_route: strict_season_filter
+  expect_year: 1968
+  expect_terms_absent: ["two-way"]        # introduced by the 2017 CBA

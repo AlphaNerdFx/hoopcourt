@@ -66,9 +66,15 @@ def test_temporal_isolation_questions_declare_a_bleed_check(q):
 
 
 @pytest.mark.parametrize("q", by_category("refusal"), ids=lambda q: q["id"])
-def test_refusal_questions_expect_nothing_back(q):
-    assert q.get("expect_empty") is True
-    assert "expect_documents" not in q, "a refusal case must not expect sources"
+def test_refusal_questions_assert_a_refusal(q):
+    """Two valid shapes. An uncovered era returns nothing; a covered era must at
+    least not surface text about a rule that did not exist yet."""
+    empty = q.get("expect_empty") is True
+    absent = bool(q.get("expect_terms_absent"))
+    assert empty or absent, "a refusal case must assert emptiness or absent terms"
+    assert not (empty and absent), "pick one; they test different things"
+    if empty:
+        assert "expect_documents" not in q, "a refusal case must not expect sources"
 
 
 @pytest.mark.parametrize("q", QUESTIONS, ids=lambda q: q["id"])

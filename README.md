@@ -20,12 +20,13 @@ build, query, or evaluate.
 
 | Layer | State |
 | --- | --- |
-| Text extraction (19 documents, 3,412 pages) | working |
+| Text extraction (19 PDFs + 7 opinions, 3,412 pages) | working |
 | Structure-aware chunking with article/section citations | working |
 | Embeddings + `sqlite-vec` index | working |
 | Temporal routing | working, 15/15 on the routing eval |
 | Era-isolated retrieval | working, anti-bleed regression tests pass |
 | FastAPI service (`/query`, `/health`) | working |
+| Pre-1995 coverage (opinions + curated timeline) | working, 1946 onward |
 | Generation (local GGUF / optional cloud) | wired, backend not yet installed |
 
 ## Quick start

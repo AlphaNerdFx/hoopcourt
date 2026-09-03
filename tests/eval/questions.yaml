@@ -1,0 +1,411 @@
+# Labelled evaluation set for retrieval and routing.
+#
+# The PRD promises "zero hallucinations across 95% of test scenarios" and "100%
+# correct matching of queries to their respective historical rulesets" while
+# defining zero scenarios. This file is those scenarios. It is written BEFORE
+# retrieval tuning on purpose: a metric invented after the fact measures the
+# implementation, not the requirement.
+#
+# Every field is checkable WITHOUT an LLM, so the whole suite runs offline, free,
+# and on CPU:
+#   expect_route      routing decision (src/api/router.py)
+#   expect_year       season the query must resolve to
+#   expect_documents  retrieved chunks must come from these
+#   forbid_documents  rule-bleeding check: NO chunk may come from these
+#   expect_terms_any  recall proxy: >=1 retrieved chunk contains one of these
+#
+# categories: temporal_isolation | grounded_citation | refusal | trigger_routing
+
+questions:
+
+# ---------------------------------------------------------------- temporal
+# The same question, asked of different eras, must reach different rulesets.
+- id: max-salary-2024
+  category: temporal_isolation
+  question: "What was the maximum annual salary a player could receive in 2024?"
+  clarified_season: "2024-25"   # boundary year: two seasons, different documents
+  expect_route: strict_season_filter
+  expect_year: 2024
+  expect_documents: ["2023 NBA CBA", "NBA Constitution 2024", "2024-25 CBA 101",
+                     "NBA Uniform Player Contract", "NBPA Agents Governing Regulations"]
+  forbid_documents: ["CBA 2011", "CBA 2017", "CBA 2005", "NBPA CBA 1999", "CBA 1995"]
+  expect_terms_any: ["Maximum Annual Salary", "thirty-five percent", "Salary Cap"]
+
+- id: max-salary-2013
+  category: temporal_isolation
+  question: "What was the maximum annual salary a player could receive in 2013?"
+  expect_route: strict_season_filter
+  expect_year: 2013
+  expect_documents: ["CBA 2011", "NBA Constitution 2012"]
+  forbid_documents: ["2023 NBA CBA", "CBA 2017", "NBPA CBA 1999", "CBA 1995"]
+  expect_terms_any: ["Maximum Annual Salary", "percent", "Salary Cap"]
+
+- id: max-salary-1997
+  category: temporal_isolation
+  question: "What was the maximum salary a player could earn in 1997?"
+  expect_route: strict_season_filter
+  expect_year: 1997
+  expect_documents: ["CBA 1995"]
+  forbid_documents: ["2023 NBA CBA", "CBA 2011", "CBA 2017", "CBA 2005"]
+  expect_terms_any: ["Salary", "Compensation", "Cap"]
+
+- id: contract-length-2020
+  category: temporal_isolation
+  question: "How many seasons could a player contract cover in 2020?"
+  expect_route: strict_season_filter
+  expect_year: 2020
+  expect_documents: ["CBA 2017", "NBA Constitution 2019",
+                     "NBA Uniform Player Contract (2017 CBA Exhibit A)"]
+  forbid_documents: ["2023 NBA CBA", "CBA 2011", "CBA 1995", "NBPA CBA 1999"]
+  expect_terms_any: ["Seasons", "Contract", "term"]
+
+- id: contract-length-2008
+  category: temporal_isolation
+  question: "How many seasons could a player contract cover in 2008?"
+  expect_route: strict_season_filter
+  expect_year: 2008
+  expect_documents: ["CBA 2005"]
+  forbid_documents: ["2023 NBA CBA", "CBA 2011", "CBA 2017", "CBA 1995"]
+  expect_terms_any: ["Seasons", "Contract", "term"]
+
+- id: luxury-tax-2015
+  category: temporal_isolation
+  question: "How was the luxury tax calculated in 2015?"
+  expect_route: strict_season_filter
+  expect_year: 2015
+  expect_documents: ["CBA 2011", "NBA Constitution 2012"]
+  forbid_documents: ["2023 NBA CBA", "CBA 1995", "NBPA CBA 1999", "CBA 2005"]
+  expect_terms_any: ["Tax", "Luxury", "Team Salary"]
+
+- id: luxury-tax-2001
+  category: temporal_isolation
+  question: "What were the tax rules in 2001?"
+  expect_route: strict_season_filter
+  expect_year: 2001
+  expect_documents: ["NBPA CBA 1999"]
+  forbid_documents: ["2023 NBA CBA", "CBA 2011", "CBA 2017", "CBA 2005"]
+  expect_terms_any: ["Tax", "Escrow", "Salary"]
+
+- id: rookie-scale-2019
+  category: temporal_isolation
+  question: "How was rookie scale compensation determined in 2019?"
+  clarified_season: "2019-20"   # boundary year: two seasons, different documents
+  expect_route: strict_season_filter
+  expect_year: 2019
+  expect_documents: ["CBA 2017", "NBA Constitution 2019",
+                     "NBA Uniform Player Contract (2017 CBA Exhibit A)"]
+  forbid_documents: ["2023 NBA CBA", "CBA 1995", "CBA 2005", "CBA 2011"]
+  expect_terms_any: ["Rookie", "Scale", "First Round"]
+
+- id: free-agency-2012
+  category: temporal_isolation
+  question: "What were the rules for restricted free agency in 2012?"
+  clarified_season: "2012-13"   # boundary year: the 2012 Constitution starts here
+  expect_route: strict_season_filter
+  expect_year: 2012
+  expect_documents: ["CBA 2011", "NBA Constitution 2012"]
+  forbid_documents: ["2023 NBA CBA", "CBA 2017", "CBA 1995", "NBPA CBA 1999"]
+  expect_terms_any: ["Restricted Free Agent", "First Refusal", "Qualifying Offer"]
+
+- id: free-agency-1996
+  category: temporal_isolation
+  question: "How did free agency work in 1996?"
+  expect_route: strict_season_filter
+  expect_year: 1996
+  expect_documents: ["CBA 1995"]
+  forbid_documents: ["2023 NBA CBA", "CBA 2011", "CBA 2017", "CBA 2005"]
+  expect_terms_any: ["Free Agent", "Veteran", "Contract"]
+
+- id: benefits-2006
+  category: temporal_isolation
+  question: "What player benefits and pension provisions applied in 2006?"
+  expect_route: strict_season_filter
+  expect_year: 2006
+  expect_documents: ["CBA 2005"]
+  forbid_documents: ["2023 NBA CBA", "CBA 2011", "CBA 2017", "CBA 1995"]
+  expect_terms_any: ["Benefits", "Pension", "Plan"]
+
+- id: escrow-2018
+  category: temporal_isolation
+  question: "How did the escrow system split revenue between players and teams in 2018?"
+  expect_route: strict_season_filter
+  expect_year: 2018
+  expect_documents: ["CBA 2017", "NBA Constitution 2012",
+                     "NBA Uniform Player Contract (2017 CBA Exhibit A)"]
+  forbid_documents: ["2023 NBA CBA", "CBA 1995", "NBPA CBA 1999"]
+  expect_terms_any: ["Escrow", "Basketball Related Income", "BRI"]
+
+# ------------------------------------------------------------ grounded citation
+- id: second-apron
+  category: grounded_citation
+  question: "What is the second apron and what restrictions does it impose?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_documents: ["2023 NBA CBA", "2024-25 CBA 101", "NBA Uniform Player Contract",
+                     "NBPA Agents Governing Regulations"]
+  forbid_documents: ["CBA 2011", "CBA 1995", "NBPA CBA 1999", "CBA 2005"]
+  expect_terms_any: ["Second Apron", "Apron", "Tax Level"]
+
+- id: mid-level-exception
+  category: grounded_citation
+  question: "How does the mid-level exception work?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_documents: ["2023 NBA CBA", "2024-25 CBA 101", "NBA Uniform Player Contract",
+                     "NBPA Agents Governing Regulations"]
+  forbid_documents: ["CBA 1995", "NBPA CBA 1999", "CBA 2005", "CBA 2011"]
+  expect_terms_any: ["Mid-Level", "Exception", "Salary Cap"]
+
+- id: bird-rights
+  category: grounded_citation
+  question: "What are Bird rights for a qualifying veteran free agent?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_documents: ["2023 NBA CBA", "2024-25 CBA 101", "NBA Uniform Player Contract",
+                     "NBPA Agents Governing Regulations"]
+  forbid_documents: ["CBA 1995", "NBPA CBA 1999", "CBA 2005"]
+  expect_terms_any: ["Qualifying Veteran", "Bird", "Free Agent"]
+
+- id: minimum-salary
+  category: grounded_citation
+  question: "What is the minimum player salary?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_documents: ["2023 NBA CBA", "2024-25 CBA 101", "NBA Uniform Player Contract",
+                     "NBPA Agents Governing Regulations"]
+  forbid_documents: ["CBA 1995", "CBA 2011", "CBA 2005"]
+  expect_terms_any: ["Minimum Player Salary", "Minimum", "Salary"]
+
+- id: agent-certification
+  category: grounded_citation
+  question: "What are the requirements for a player agent to be certified?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_documents: ["NBPA Agents Governing Regulations", "2023 NBA CBA",
+                     "2024-25 CBA 101", "NBA Uniform Player Contract"]
+  forbid_documents: ["CBA 1995", "NBPA CBA 1999", "CBA 2005"]
+  expect_terms_any: ["Agent", "Certification", "Regulations"]
+
+- id: draft-lottery-odds
+  category: grounded_citation
+  question: "What are the draft lottery odds for the worst team in 2026?"
+  clarified_season: "2026-27"   # boundary year: two seasons, different documents
+  expect_route: strict_season_filter
+  expect_year: 2026
+  expect_documents: ["NBA Draft Lottery 2026 Probabilities",
+                     "2026 NBA Uniform Agent Certification", "2023 NBA CBA",
+                     "NBA Constitution 2024", "2024-25 CBA 101",
+                     "NBA Uniform Player Contract", "NBPA Agents Governing Regulations"]
+  forbid_documents: ["CBA 1995", "CBA 2011", "Draft Probabilities 2003"]
+  expect_terms_any: ["Lottery", "Probabilit", "Draft"]
+
+- id: draft-lottery-2003
+  category: grounded_citation
+  question: "What were the draft lottery probabilities in 2003?"
+  clarified_season: "2003-04"   # boundary year: two seasons, different documents
+  expect_route: strict_season_filter
+  expect_year: 2003
+  expect_documents: ["Draft Probabilities 2003", "NBPA CBA 1999"]
+  forbid_documents: ["2023 NBA CBA", "CBA 2011", "CBA 2017",
+                     "NBA Draft Lottery 2026 Probabilities"]
+  expect_terms_any: ["Lottery", "Probabilit", "Draft"]
+
+- id: concussion-protocol
+  category: grounded_citation
+  question: "What is the return-to-participation protocol after a concussion?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_documents: ["2025-26 NBA Concussion Policy", "Official 2025-26 Rulebook",
+                     "2025-26 NBA Officials Guide", "2025-26 NBA Officiating Staff",
+                     "2023 NBA CBA", "NBA Constitution 2024", "2024-25 CBA 101",
+                     "NBA Uniform Player Contract", "NBPA Agents Governing Regulations",
+                     "2026 NBA Uniform Agent Certification",
+                     "NBA Draft Lottery 2026 Probabilities"]
+  forbid_documents: ["CBA 1995", "CBA 2011", "NBPA CBA 1999", "CBA 2005", "CBA 2017"]
+  expect_terms_any: ["Concussion", "Protocol", "Return"]
+
+- id: rulebook-shot-clock
+  category: grounded_citation
+  question: "What are the shot clock rules and when does it reset?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_documents: ["Official 2025-26 Rulebook", "2025-26 NBA Officials Guide",
+                     "2025-26 NBA Officiating Staff", "2025-26 NBA Concussion Policy",
+                     "2023 NBA CBA", "NBA Constitution 2024", "2024-25 CBA 101",
+                     "NBA Uniform Player Contract", "NBPA Agents Governing Regulations",
+                     "2026 NBA Uniform Agent Certification",
+                     "NBA Draft Lottery 2026 Probabilities"]
+  forbid_documents: ["CBA 1995", "CBA 2011", "NBPA CBA 1999", "CBA 2005"]
+  expect_terms_any: ["shot clock", "24", "reset"]
+
+- id: constitution-team-transfer
+  category: grounded_citation
+  question: "What approval is required to transfer ownership of a team?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_documents: ["NBA Constitution 2024", "2023 NBA CBA", "2024-25 CBA 101",
+                     "NBA Uniform Player Contract", "NBPA Agents Governing Regulations"]
+  forbid_documents: ["CBA 1995", "CBA 2011", "NBPA CBA 1999", "NBA Constitution 2019"]
+  expect_terms_any: ["transfer", "Board of Governors", "Members"]
+
+# ------------------------------------------------------------- trigger routing
+- id: trigger-coin-flip-historical
+  category: trigger_routing
+  question: "How did the coin flip determine the first pick in the draft?"
+  expect_route: historical_keyword_override
+  expect_year: 1984
+  expect_trigger: "coin flip"
+
+- id: trigger-coin-flip-modern
+  category: trigger_routing
+  question: "If two teams tie in the standings, is a coin flip used for seeding?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_trigger: null
+
+- id: trigger-reserve-clause
+  category: trigger_routing
+  question: "What was the reserve clause and how did the Oscar Robertson suit end it?"
+  expect_route: historical_keyword_override
+  expect_year: 1975
+  expect_trigger: "reserve clause"
+
+- id: trigger-aba-merger
+  category: trigger_routing
+  question: "How were the Nets and Spurs absorbed in the ABA merger?"
+  expect_route: historical_keyword_override
+  expect_year: 1976
+  expect_trigger: "aba"
+
+- id: trigger-aba-false-positive
+  category: trigger_routing
+  question: "Which teams abandoned their arenas most recently?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_trigger: null
+
+- id: trigger-territorial
+  category: trigger_routing
+  question: "How did territorial picks let a team draft a local college player?"
+  expect_route: historical_keyword_override
+  expect_year: 1965
+  expect_trigger: "territorial"
+
+- id: trigger-decade-seventies
+  category: trigger_routing
+  question: "What were the compensation rules in the seventies?"
+  expect_route: strict_season_filter
+  expect_year: 1975
+  expect_trigger: null
+
+- id: trigger-decade-nineties
+  category: trigger_routing
+  question: "How did team salary work in the 1990s?"
+  expect_route: strict_season_filter
+  expect_year: 1995
+  expect_trigger: null
+
+- id: trigger-ambiguous-2023
+  category: trigger_routing
+  question: "What were the luxury tax penalties in 2023?"
+  expect_route: require_season_clarification
+  expect_year: 2023
+  expect_trigger: null
+
+- id: trigger-ambiguous-resolved
+  category: trigger_routing
+  question: "What were the luxury tax penalties in 2023?"
+  clarified_season: "2022-23"
+  expect_route: strict_season_filter
+  expect_year: 2022
+  expect_trigger: null
+
+- id: trigger-ambiguous-2011-boundary
+  category: trigger_routing
+  # 2010-11 is governed by CBA 2005 and 2011-12 by CBA 2011, so "2011" is exactly
+  # as ambiguous as "2023". The spec flagged only 2023; the set is now derived
+  # from the corpus so every document boundary is guarded.
+  question: "What was the luxury tax in 2011?"
+  expect_route: require_season_clarification
+  expect_year: 2011
+  expect_trigger: null
+
+- id: trigger-ambiguous-2011-resolved
+  category: trigger_routing
+  question: "What was the luxury tax in 2011?"
+  clarified_season: "2010-11"
+  expect_route: strict_season_filter
+  expect_year: 2010
+  expect_trigger: null
+  expect_documents: ["CBA 2005"]
+  forbid_documents: ["CBA 2011", "2023 NBA CBA", "CBA 2017"]
+
+- id: trigger-ambiguous-2012-boundary
+  category: trigger_routing
+  # Adding the 2012 Constitution made 2012 a boundary: 2011-12 is governed by the
+  # older constitution, 2012-13 by this one. Derived from the corpus, so the new
+  # document guarded its own boundary with no code change (DECISIONS.md D10).
+  question: "What did the constitution say about team relocation in 2012?"
+  expect_route: require_season_clarification
+  expect_year: 2012
+  expect_trigger: null
+
+- id: trigger-explicit-year-beats-keyword
+  category: trigger_routing
+  question: "Was there a coin flip for the draft in 2015?"
+  expect_route: strict_season_filter
+  expect_year: 2015
+  expect_trigger: null
+
+- id: trigger-no-signal
+  category: trigger_routing
+  question: "How does a sign-and-trade work?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_trigger: null
+
+# -------------------------------------------------------------------- refusal
+# No document in the corpus covers these. Retrieval must return NOTHING rather
+# than the nearest plausible text -- the grounding rule (CLAUDE.md sec.2.2)
+# treats an ungrounded answer as a fatal error, not a degraded one.
+- id: refuse-1952
+  category: refusal
+  question: "What were the luxury tax rules in 1952?"
+  expect_route: strict_season_filter
+  expect_year: 1952
+  expect_empty: true
+
+- id: refuse-1968
+  category: refusal
+  question: "What was the salary cap in 1968?"
+  expect_route: strict_season_filter
+  expect_year: 1968
+  expect_empty: true
+
+- id: refuse-1980
+  category: refusal
+  question: "How did restricted free agency work in 1980?"
+  expect_route: strict_season_filter
+  expect_year: 1980
+  expect_empty: true
+
+- id: refuse-1990
+  category: refusal
+  question: "What were the rules on rookie contracts in 1990?"
+  expect_route: strict_season_filter
+  expect_year: 1990
+  expect_empty: true
+
+- id: refuse-2035
+  category: refusal
+  question: "What will the salary cap be in 2035?"
+  expect_route: strict_season_filter
+  expect_year: 2035
+  expect_empty: true
+
+- id: refuse-1946
+  category: refusal
+  question: "What were the founding rules of the BAA in 1946?"
+  expect_route: strict_season_filter
+  expect_year: 1946
+  expect_empty: true

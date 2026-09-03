@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to release
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    name: Verify release meets build standard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check src scripts tests
+
+      - name: Tests
+        run: pytest tests/ -q
+
+      - name: Version matches the tag
+        run: |
+          TAG="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          VERSION="${TAG#v}"
+          grep -q "^## \[${VERSION}\]" CHANGELOG.md \
+            || { echo "CHANGELOG.md has no section for ${VERSION}"; exit 1; }
+          echo "changelog section found for ${VERSION}"
+
+      - name: Build a public-domain index and run the pre-1995 evaluation
+        # Court opinions and the curated timeline are the only sources that can
+        # legally be fetched in CI, and they are exactly what covers pre-1995.
+        # This proves a release can still route and isolate the historical era.
+        run: |
+          python scripts/fetch_opinions.py
+          python scripts/build_index.py --db ci.db \
+            $(python - <<'PY'
+          import yaml
+          docs = yaml.safe_load(open("corpus_manifest.yaml"))["documents"]
+          print(" ".join(f'--only "{d["doc_name"]}"'
+                         for d in docs if d.get("source_tier") == "judicial"))
+          PY
+            )
+          python tests/eval/run_eval.py --db ci.db --category trigger_routing
+
+  publish:
+    name: Publish release
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract this version's changelog section
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          VERSION="${TAG#v}"
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" {flag=1; next}
+            flag && /^## \[/ {exit}
+            flag {print}
+          ' CHANGELOG.md > RELEASE_NOTES.md
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "--- release notes ---"; cat RELEASE_NOTES.md
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.notes.outputs.tag }}
+          name: ${{ steps.notes.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ startsWith(steps.notes.outputs.tag, 'v0.') }}

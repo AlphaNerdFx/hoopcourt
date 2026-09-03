@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint and test (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check src scripts tests
+
+      - name: Tests
+        # The corpus is gitignored, so tests must run without it. Anything that
+        # needs a real document is skipped, not silently passed: see the
+        # data-dependent markers in tests/test_manifest.py.
+        run: pytest tests/ -q --maxfail=1
+
+  integrity:
+    name: Corpus and timeline integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Manifest and timeline parse and validate
+        run: |
+          python - <<'PY'
+          from src.ingest.timeline import load_timeline, entry_stats
+          import yaml, sys
+
+          docs = yaml.safe_load(open("corpus_manifest.yaml"))["documents"]
+          print(f"manifest: {len(docs)} documents")
+
+          entries = load_timeline("historical_timeline.yaml")
+          print("timeline:", entry_stats(entries))
+
+          # Every timeline claim must be attributable.
+          bad = [e.id for e in entries if not e.citation.strip() or not e.source_url]
+          if bad:
+              sys.exit(f"timeline entries without a citation or source: {bad}")
+          PY
+
+      - name: Source URLs still serve their documents
+        # Advisory: hosts rate-limit and CI has no local files to size-check
+        # against, so this reports without failing the build.
+        continue-on-error: true
+        run: python scripts/fetch_corpus.py --check-urls

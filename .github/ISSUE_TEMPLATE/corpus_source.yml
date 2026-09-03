@@ -1,0 +1,48 @@
+name: Corpus source proposal
+description: Propose a document or source to add
+labels: [corpus]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Sources must be official or public record. Personal cloud storage mirrors
+        are not acceptable, see docs/corpus/DATA_SOURCES.md.
+  - type: input
+    id: document
+    attributes:
+      label: Document
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Source URL
+      description: Must serve the document itself, not a viewer page.
+    validations:
+      required: true
+  - type: input
+    id: seasons
+    attributes:
+      label: Seasons it governs
+      placeholder: "1988-1994"
+    validations:
+      required: true
+  - type: textarea
+    id: reasoning
+    attributes:
+      label: Why that window
+      description: |
+        The season window is the routing logic. A wrong window produces a
+        confident wrong answer with a real citation and no error. Explain it.
+    validations:
+      required: true
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Source tier
+      options:
+        - primary (the governing document itself)
+        - judicial (a court opinion describing the rules)
+        - timeline (a curated, cited entry)
+    validations:
+      required: true

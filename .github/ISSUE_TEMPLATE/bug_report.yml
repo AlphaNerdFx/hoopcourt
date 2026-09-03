@@ -1,0 +1,50 @@
+name: Bug report
+description: Something behaves incorrectly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A wrong answer with a real-looking citation is the failure mode this
+        project cares most about. If you have one, include the citation it gave.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the query, the response, and what you expected.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: season
+    attributes:
+      label: Season or era involved
+      placeholder: "1975, or 2024-25"
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Retrieval returned the wrong era
+        - Routing sent the query to the wrong season
+        - Citation was wrong or unresolvable
+        - Extraction or indexing
+        - API behaviour
+        - Corpus or sources
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Commands, or a curl against /query.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Output of `python scripts/audit_corpus.py --samples 1` and `GET /health`.
+      render: text

@@ -1,0 +1,201 @@
+# CLAUDE.md: Project Constitution & System Directives
+## Project: Courtroom-to-Court (V1.0)
+
+---
+
+## 1. Non-Negotiable Persona & Behavioral Rules
+
+The AI advisor reading this file MUST strictly adhere to the following directives in every single response:
+
+```
+You are my advisor who happens to be smarter than me. You must follow these rules in every reply: 
+1. Never start with agreement. Your first sentence must challenge my assumption, point out what I'm missing, or ask a question that exposes a gap in my thinking. 
+2. Rate your confidence. Before any claim, tag it [Certain] if you have hard evidence, [Likely] if it's a strong inference, [Guessing] if you are filling gaps. If most of your reply is guessing, say so first. 
+3. Kill these phrases for good: "Great question", "You're absolutely right", "That makes a lot of sense", "Absolutely", "Definitely". 
+4. Disagree with structure. When I'm wrong, say: "I disagree because [reason]. Here's what I'd do instead [alternative]. The risk in your approach is [specific downside]." 
+5. Give me the uncomfortable answer first. If there's a truth I probably don't want to hear, lead with it. 
+6. No warm up paragraphs. Start with the most useful thing you can say. 
+7. If I push back, don't fold. Hold your position unless I give you genuinely new information.
+```
+
+---
+
+## 2. Project Mission & Grounding Rules
+
+### 2.1 Core Mission
+Courtroom-to-Court is an era-agnostic legal NBA expert RAG engine designed to interpret the complex legal mechanisms of the NBA Collective Bargaining Agreement (CBA), Constitution, and draft procedures from the 1940s to the present day.
+
+### 2.2 Chronological Neutrality & Anti-Bleed Mandate
+* **Zero Rule Bleeding**: Historical queries must NEVER be contaminated by modern rules (e.g., applying 2023 CBA "Second Apron" rules to a 1995 query).
+* **Grounding Rule**: Every answer must be strictly derived from retrieved database chunks or verified historical JSON timelines. Hallucinated citations or ungrounded claims are treated as fatal system errors.
+
+---
+
+## 3. Technology Stack & Deployment Profiles
+
+* **API Layer**: FastAPI + Pydantic (Enforcing request validation and token limits).
+* **Vector Engine**: SQLite + `sqlite-vec` (Native pure-C extension; `vec0` virtual table with cosine distance).
+* **Local LLM**: `Qwen2.5-7B-Instruct` (`Q4_K_M` GGUF via `llama-cpp-python`; CUDA optional, CPU works). Apache-2.0, unlike the Llama 3.1 Community License, which carries acceptable-use restrictions and a 700M-MAU clause incompatible with this project's MIT licence. Llama-3.1-8B remains supported by passing its repo id.
+* **Cloud LLM** *(optional, bring-your-own-key, never required)*: `claude-opus-5` (Anthropic API).
+* **Embeddings**: `BAAI/bge-base-en-v1.5` (768 dimensions, MIT). Chosen over `nomic-embed-text-v1.5`, which requires `trust_remote_code=True`, arbitrary code execution at import, in a project whose security posture is about supply-chain integrity, and needs `search_document:`/`search_query:` task prefixes that were never applied.
+* **Text Extraction**: `pdfplumber` (MIT). **No OCR.** All 18 corpus documents (3,320 pages) are single-column with usable text layers, including `CBA 1995.pdf`, whose scan already carries an Acrobat Paper Capture OCR layer. `scripts/audit_corpus.py` re-checks this and fails loudly if a future document needs OCR.
+* **Admin UI**: not built. Its purpose was correcting OCR output; with no OCR in the pipeline it would guard an empty queue. `is_verified` remains in the schema as defence-in-depth.
+
+### 3.1 Supported Hardware Profiles
+* **Default Laptop Profile**: NVIDIA RTX 4060 (8GB VRAM) + 16GB System RAM.
+  * Model context (`n_ctx`) set to **8192**. The former 2048 cap was arithmetically impossible: a 1,000-token question plus five retrieved legal chunks plus the system prompt exceeds it before generation begins, silently truncating away the citations the design depends on. A 7-8B GQA model spends ~128 KiB/token of KV cache, so 8192 tokens is ~1 GiB on top of ~4.9 GiB of Q4_K_M weights, about 6 GiB, which fits 8 GB VRAM.
+* **CPU-Only Fallback**: Startup script (`init.sh`) must warn users of degraded performance ($<3$ tokens/sec) and prompt for explicit confirmation or fallback to Cloud Mode.
+
+---
+
+## 4. Relational & Vector Data Model Contracts
+
+```sql
+-- Core Documents Catalog
+CREATE TABLE documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_name TEXT UNIQUE NOT NULL,
+    category TEXT CHECK (category IN ('Historical', 'Current Operational', 'Current Governing')) NOT NULL,
+    start_season INTEGER NOT NULL,
+    end_season INTEGER NOT NULL,
+    source_url TEXT NOT NULL
+);
+
+-- Text Chunks with Verification Bit
+CREATE TABLE document_chunks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    doc_id INTEGER NOT NULL,
+    chunk_hash TEXT UNIQUE NOT NULL,
+    article_num TEXT,          -- restored from the PRD schema: citations must
+    section_num TEXT,          -- resolve to a section, not merely a page
+    page_num INTEGER NOT NULL,
+    is_verified INTEGER DEFAULT 0 CHECK (is_verified IN (0, 1)),
+    text_content TEXT NOT NULL,
+    FOREIGN KEY (doc_id) REFERENCES documents (id) ON DELETE CASCADE
+);
+
+-- Pure-C Virtual Vector Table (sqlite-vec).
+-- doc_id is a METADATA COLUMN, and this is what makes era isolation work.
+-- Measured on sqlite-vec v0.1.9: constraining the PRIMARY KEY
+-- (chunk_id IN (subquery)) applies k FIRST and filters afterwards -- a
+-- post-filter that returns ZERO rows when another era dominates the ranking.
+-- Constraining a declared metadata column restricts candidates BEFORE the
+-- search. See src/db/schema.py and the characterisation test in
+-- tests/test_vector_retrieval.py.
+CREATE VIRTUAL TABLE vec_chunks USING vec0(
+    chunk_id INTEGER PRIMARY KEY,
+    doc_id INTEGER,
+    embedding float[768] distance_metric=cosine
+);
+
+-- Desynchronization Prevention Trigger
+CREATE TRIGGER sync_vec_index_on_chunk_deletion
+AFTER DELETE ON document_chunks
+BEGIN
+    DELETE FROM vec_chunks WHERE chunk_id = OLD.id;
+END;
+
+-- Historical Slang & Extinct Concept Analogies
+CREATE TABLE historical_concept_mapper (
+    concept_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    archaic_term TEXT UNIQUE NOT NULL,
+    modern_analogy TEXT NOT NULL,
+    simplified_explanation TEXT NOT NULL,
+    valid_from_year INTEGER NOT NULL,
+    valid_to_year INTEGER NOT NULL
+);
+```
+
+---
+
+## 5. Chronology Engine & Query Routing Logic
+
+The system strictly bounds prompt size and context retrieval:
+1. **Token Limit Gating**: `TokenLimitEnforcer` drops any request $> 1,000$ tokens using `tiktoken` (`cl100k_base`) with HTTP 400.
+2. **Dynamic Route Classifier**:
+   * **Explicit Year**: Queries containing 4-digit years (e.g., "1972") filter document candidates where `start_season <= 1972 AND end_season >= 1972`.
+   * **Transitional Year Boundary**: an ambiguous four-digit year returns
+     **HTTP 409** with both season options. Not HTTP 300: `300 Multiple Choices`
+     is a redirect status that clients, proxies and browsers act on as one, and
+     User Story 1 describes a UI prompt, not a redirect.
+     **2023 is not the only such year.** Every document-window boundary is
+     ambiguous, 14 of them in the shipped corpus, including 2011, where
+     2010-11 is governed by CBA 2005 and 2011-12 by CBA 2011. The set is derived
+     from the index by `db.schema.ambiguous_seasons()` rather than hardcoded, so
+     re-scoping a document cannot leave a boundary silently unguarded.
+     See DECISIONS.md D10.
+   * **Contextual Proximity Triggers**: Keywords ("coin flip", "aba", "reserve clause", "territorial") ONLY override routing if found within a 6-word proximity window of historical context terms (e.g., "draft", "merger", "contract"). Otherwise, default to current 2023 CBA.
+3. **Pre-Filtered Vector Search**: KNN MUST be constrained on the `doc_id`
+   **metadata column**, never on the primary key. Resolve the era to document ids
+   relationally first, then:
+   ```sql
+   SELECT chunk_id, distance
+   FROM vec_chunks
+   WHERE embedding MATCH :embedding AND k = :k
+     AND doc_id IN (:d1, :d2, ...)     -- true pre-filter
+   ORDER BY distance ASC LIMIT :k      -- REQUIRED, see below
+   ```
+   The outer `ORDER BY ... LIMIT` is load-bearing: with an IN-list of N documents
+   sqlite-vec returns `k` rows **per document**, grouped by document and not
+   globally sorted. Without it the caller silently gets the wrong top-k.
+
+---
+
+## 6. Prompt Personas & Output Formatting
+
+Every prompt must be wrapped in isolated Llama-3 Instruct message tags (`<|im_start|>` and `<|im_end|>`) with XML context blocks (`<context>`):
+* **Legal Scholar Mode**: Formal tone, strict adherence to retrieved text, mandatory bracketed footnotes (`[Document, Page X]`), and explicit refusal if text is missing.
+* **Casual Fan Mode**: Podcaster/sportswriter tone, injects dynamic analogies from `historical_concept_mapper` (e.g., "Reserve Clause" -> "Permanent Franchise Tag"), footnotes relegated to final line.
+
+---
+
+## 7. Security, Compliance, & Distribution Directives
+
+1. **Fetch-and-Build Distribution** *(replaces the IPFS/BitTorrent plan)*:
+   * No copyrighted PDFs, compiled databases, or torrent descriptors in the repo.
+   * The project distributes **instructions and SHA-256 checksums, not content**.
+     `scripts/fetch_corpus.py` reports which documents are missing and where to
+     obtain each from official or public-record sources; `scripts/build_index.py`
+     compiles the index locally.
+   * The former plan shipped a pre-compiled `nba_legal.db` over IPFS with a
+     magnet-link fallback. That database contains the full text of copyrighted
+     documents, so distributing it is the same act as distributing the PDFs, the
+     "no PDFs in the repo" rule relocates the problem rather than curing it. It
+     also hardcoded the SHA-256 of a file no step in the plan ever built.
+   * See `DATA_SOURCES.md`.
+2. **GDPR Technical Policy**:
+   * `BACKEND_MODE=local`: 100% offline, zero network egress, zero query logging. User acts as both Data Controller and Processor.
+   * `BACKEND_MODE=cloud`: User prompts are ephemeral in-memory only; require explicit UI consent and Zero-Data-Retention (ZDR) third-party API configurations.
+3. **Indirect Prompt Injection Defense**:
+   * Scanned PDFs from court records must pass PaddleOCR coordinate-filtering. All chunks default to `is_verified = 0` and are withheld from the active RAG index until approved via the Streamlit admin panel.
+4. **SQL Parameterization**: All database queries must run parameterized bindings. F-strings in SQL execution are strictly banned.
+
+---
+
+## 8. Build Sequence & Verification Status
+
+The original 9-step sequence was reordered. As written it had no ingestion step,
+nothing chunked documents, generated embeddings, populated the tables, or
+assembled a FastAPI app, so completing all nine steps produced a system that
+could not answer a question. The build is now retrieval-first and eval-driven:
+the central claim (chronological neutrality) is testable without an LLM, which
+keeps the CUDA toolchain and the OCR pipeline off the critical path.
+
+```
+[x] Phase 0: .gitignore before git init (corpus excluded; verified)
+[x] Phase 1: Direct text extraction, 18 docs / 3,320 pages   -> src/parser/
+[x] Phase 2: Chunking + embeddings + index population        -> src/ingest/
+[x] Phase 3: Labelled eval set (40 questions) + runner       -> tests/eval/
+[x] Phase 4: FastAPI assembly, token gate, temporal router   -> src/api/
+[~] Phase 5: Prompt templates + generator backends (wired; backend not installed)
+[x] Phase 6: Fetch-and-build distribution + checksums        -> scripts/
+```
+
+Superseded from the original sequence:
+* **Step 3 (PaddleOCR, size L)**, cut. All 18 documents are single-column with
+  usable text layers; `scripts/audit_corpus.py` re-checks and fails if that changes.
+* **Step 8 (IPFS/BitTorrent)**, replaced by fetch-and-build (sec. 7.1).
+* **Step 9 (Streamlit OCR UI)**, cut; with no OCR it guards an empty queue.
+
+Measured status: routing 12/12; anti-bleed regression tests pass; 56 unit tests
+green. Run `python tests/eval/run_eval.py` for the current numbers.

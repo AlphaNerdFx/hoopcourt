@@ -1,12 +1,12 @@
 # ---------------------------------------------------------------
-# Copyrighted corpus — NEVER commit.
+# Copyrighted corpus, NEVER commit.
 # Users fetch these themselves via scripts/fetch_corpus.py.
 # See DATA_SOURCES.md for authorized official sources.
 # ---------------------------------------------------------------
 data/
 *.pdf
 
-# Compiled index (derived from copyrighted text — also never committed)
+# Compiled index (derived from copyrighted text, also never committed)
 *.db
 *.db-journal
 *.db-wal

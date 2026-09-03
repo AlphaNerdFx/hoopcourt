@@ -39,7 +39,15 @@ RE_RUNNING_ARTICLE = re.compile(
 # Noise characters that share the header slot on scanned pages. The dash range is
 # written with escapes so a future find-and-replace on dash characters cannot
 # silently turn it into an invalid range.
-_NOISE = r"\s\-–—_!|.,;:~'\"^*"
+# Characters that share the header slot on scanned pages. Assembled from
+# separate literals, with the dashes given as code points, so that a
+# find-and-replace over punctuation cannot corrupt the class. An earlier
+# sweep rewrote the literal dashes here into an invalid range that only
+# failed at import time.
+_NOISE = "".join([
+    r"\s", r"\-", "\u2013", "\u2014", "_", "!", "|", ".", ",",
+    ";", ":", "~", "'", '"', "^", "*",
+])
 RE_BARE_PAGE = re.compile(rf"^[{_NOISE}]*\d{{0,4}}[{_NOISE}]*$")
 # Structural headings inside the body text. Both are deliberately case-SENSITIVE
 # and anchored end-to-end: a case-insensitive `^ARTICLE [IVXLC]+` also matches

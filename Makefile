@@ -1,4 +1,4 @@
-# Courtroom-to-Court
+# Hoopcourt
 VENV   ?= venv
 PY     := $(VENV)/bin/python
 PIP    := $(VENV)/bin/pip

@@ -1,4 +1,4 @@
-# Courtroom-to-Court — core runtime dependencies
+# Hoopcourt, core runtime dependencies
 # All permissively licensed (MIT/BSD/Apache-2.0) to stay compatible with
 # this project's MIT LICENSE. See "License note" at the bottom.
 

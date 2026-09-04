@@ -35,10 +35,14 @@ def test_citation_degrades_when_structure_is_unknown():
     assert format_citation(bare) == "NBA Constitution 2024, p. 14"
 
 
-def test_context_blocks_carry_their_own_citation():
+def test_context_blocks_carry_exactly_one_identifier():
+    """A block used to carry both an id and a citation, and the model merged
+    them into "[1, citation: ...]". Correct citations, wrong shape, all scored
+    as fabrications. One identifier removes the choice."""
     rendered = format_context([CHUNK])
     assert 'citation="2023 NBA CBA, Article II, Section 7, p. 37"' in rendered
-    assert "<context id=\"1\"" in rendered and "</context>" in rendered
+    assert "<context " in rendered and "</context>" in rendered
+    assert "id=" not in rendered
 
 
 @pytest.mark.parametrize("style", ["scholar", "casual"])

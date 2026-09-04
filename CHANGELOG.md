@@ -9,7 +9,26 @@ is measured, not just the retrieval layer.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Ollama generation backend, tried before llama-cpp because it needs no compiler
+  and manages memory itself. A 7B model at Q4_K_M does not fit in-process on an
+  8GB machine; through Ollama the same model runs.
+- Citation verification (`src/model/verify.py`). An answer is checked against the
+  chunks it was actually handed, so citing a real document with an invented
+  pinpoint is caught. On its first run against a local 7B it found a fabricated
+  citation to a "1996 NBA Collective Bargaining Agreement", an agreement that
+  does not exist.
+- `run_eval.py --with-generation` measures citation validity alongside retrieval.
+
+### Changed
+
+- Context blocks carry one identifier, not two. Given both an `id` and a
+  `citation` the model merged them into `[1, citation: ...]`, so correct
+  citations were scored as fabrications.
+- The tier label is separated from the citation locator. `[... , part 29]` and
+  `[... , part 29 [court opinion]]` are both accepted, because the label is
+  added for the reader rather than being part of the reference.
 
 ## [0.1.0] - 2026-09-03
 

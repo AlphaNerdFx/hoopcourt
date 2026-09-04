@@ -9,8 +9,12 @@ everything behind a driver upgrade.
 
 Backends are chosen by a one-method protocol:
 
-* ``LocalGGUFGenerator``  -- default. Qwen2.5-7B-Instruct (Apache-2.0), free and
-  offline. Chosen over Llama-3.1-8B because the Llama Community License carries
+* ``OllamaGenerator``    -- preferred when an Ollama daemon is reachable. It is
+  how most people already run local models, it needs no compiler, and it manages
+  weights and memory itself. Pair it with an Apache-2.0 model such as Mistral 7B
+  to keep the whole stack permissively licensed.
+* ``LocalGGUFGenerator``  -- direct llama-cpp binding. Qwen2.5-7B-Instruct
+  (Apache-2.0), free and offline, but it has to compile. Chosen over Llama-3.1-8B because the Llama Community License carries
   acceptable-use restrictions and a 700M-MAU clause that sit badly with this
   project's MIT licence; Llama remains supported by passing its repo id.
 * ``AnthropicGenerator`` -- optional, bring-your-own-key. Never required, never
@@ -18,6 +22,7 @@ Backends are chosen by a one-method protocol:
 """
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from collections.abc import Sequence
@@ -34,6 +39,11 @@ from src.model.prompt_templates import build_messages
 # to fall off the end.
 DEFAULT_N_CTX = 8192
 DEFAULT_MAX_TOKENS = 600
+
+# Ollama defaults. Mistral 7B is Apache-2.0, unlike Llama 3.x, so it keeps the
+# default stack permissively licensed end to end.
+DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
+DEFAULT_OLLAMA_MODEL = "mistral:7b"
 
 DEFAULT_LOCAL_REPO = "Qwen/Qwen2.5-7B-Instruct-GGUF"
 DEFAULT_LOCAL_FILE = "qwen2.5-7b-instruct-q4_k_m.gguf"
@@ -59,6 +69,58 @@ def lookup_concept_analogy(
         (trigger_keyword.lower(),),
     ).fetchone()
     return dict(row) if row else None
+
+
+class OllamaGenerator:
+    """Generation through a local Ollama daemon.
+
+    Chosen as the first backend to try because it is usually already there. It
+    also sidesteps a constraint this project hit on its own reference hardware:
+    a 7B model at Q4_K_M needs about 4.9 GB of weights, which does not fit
+    comfortably in 5 GB of free system RAM when run in-process. Ollama memory
+    maps the weights and evicts them between calls, so the same model that would
+    not load directly runs fine here.
+    """
+
+    def __init__(self, model: str = DEFAULT_OLLAMA_MODEL,
+                 base_url: str = DEFAULT_OLLAMA_URL, timeout: int = 300):
+        import urllib.error
+        import urllib.request
+
+        self._urllib = urllib.request
+        self._model = model
+        self._base = base_url.rstrip("/")
+        self._timeout = timeout
+
+        # Fail construction rather than the first query, so build_generator can
+        # fall through to another backend.
+        req = urllib.request.Request(f"{self._base}/api/tags")
+        with urllib.request.urlopen(req, timeout=15) as r:
+            names = {m["name"] for m in json.load(r).get("models", [])}
+        if model not in names:
+            raise RuntimeError(
+                f"ollama has no model {model!r}; pulled: {sorted(names)}")
+
+    @property
+    def name(self) -> str:
+        return f"ollama:{self._model}"
+
+    def generate(self, query, chunks, route, style="scholar", analogy=None) -> str:
+        messages = build_messages(query, chunks, style, analogy, route)
+        payload = json.dumps({
+            "model": self._model,
+            "messages": messages,
+            "stream": False,
+            # Grounding matters more than fluency, so decoding is deterministic.
+            "options": {"temperature": 0.0, "num_ctx": DEFAULT_N_CTX,
+                        "num_predict": DEFAULT_MAX_TOKENS},
+        }).encode("utf-8")
+        req = self._urllib.Request(
+            f"{self._base}/api/chat", data=payload,
+            headers={"Content-Type": "application/json"})
+        with self._urllib.urlopen(req, timeout=self._timeout) as r:
+            body = json.load(r)
+        return (body.get("message") or {}).get("content", "").strip()
 
 
 class LocalGGUFGenerator:
@@ -140,12 +202,25 @@ def build_generator(mode: str | None = None) -> Generator | None:
     ``grounded`` set, and simply omits the prose answer.
     """
     mode = (mode or os.environ.get("BACKEND_MODE", "local")).lower()
-    try:
-        if mode == "cloud":
+
+    if mode == "cloud":
+        try:
             return AnthropicGenerator(
                 os.environ.get("NBA_CLOUD_MODEL", DEFAULT_CLOUD_MODEL))
-        if mode == "local":
+        except Exception:
+            return None
+
+    if mode == "local":
+        # Ollama first: it is usually already running, needs no compiler, and
+        # handles the memory pressure that stops a 7B loading in-process here.
+        try:
+            return OllamaGenerator(
+                os.environ.get("NBA_OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL),
+                os.environ.get("NBA_OLLAMA_URL", DEFAULT_OLLAMA_URL))
+        except Exception:
+            pass
+        try:
             return LocalGGUFGenerator(model_path=os.environ.get("NBA_GGUF_PATH"))
-    except Exception:
-        return None
+        except Exception:
+            return None
     return None

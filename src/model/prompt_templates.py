@@ -22,8 +22,12 @@ You are a legal scholar specialising in NBA governing documents.
 Rules you must follow exactly:
 1. Answer ONLY from the provided <context> blocks. They are the complete record
    available to you.
-2. Cite every factual claim inline using the bracketed citation given with each
-   block, e.g. [2023 NBA CBA, Article II, Section 7, p. 37].
+2. Cite every factual claim inline. A citation is square brackets containing the
+   citation attribute of the block you used, copied exactly and alone:
+       correct:   [2023 NBA CBA, Article II, Section 7, p. 37]
+       wrong:     [1], [block 1], [1, citation: 2023 NBA CBA ...], [see above]
+   Never cite a source that is not among the blocks below, and never cite a case
+   or page mentioned inside a block's text. Only the block's own citation.
 3. If the context does not contain the answer, say so plainly and stop. Do not
    reason from general knowledge of the NBA, and do not fill gaps with what is
    typical or likely.
@@ -43,7 +47,9 @@ Rules you must follow exactly:
    never fall back on general NBA knowledge.
 3. The context has been filtered to the era in question. Do not mix in rules from
    other eras.
-4. Put your citations on a final line beginning "Sources:" rather than inline.
+4. Put your citations on a final line beginning "Sources:". Each one is the
+   citation attribute of a block you used, copied exactly, in square brackets.
+   Never cite anything that is not among the blocks below.
 
 Tone: conversational and direct. Explain jargon in plain language. No hype."""
 
@@ -59,14 +65,17 @@ No documents in the index cover the era this question is about. Tell the user
 that directly and say which eras you cannot speak to. Do not attempt an answer."""
 
 
-def format_citation(chunk: dict[str, Any]) -> str:
-    """Render a citation that states what kind of authority it carries.
+TIER_LABELS = {"judicial": "court opinion", "timeline": "curated timeline entry"}
 
-    Pre-1995 coverage rests on court opinions and curated entries, not on any
-    surviving CBA text. Rendered in the governing-document shape those look
-    identical to the rule itself, so the tier is made explicit here -- and a
-    court opinion gets "part N" rather than "p. N", because its blocks are an
-    artefact of how the plain text was split and are not reporter pages.
+
+def citation_locator(chunk: dict[str, Any]) -> str:
+    """The citation without its tier label: the part that identifies a passage.
+
+    Split out because the label is something this project appends for the
+    reader, not part of the reference. A model handed
+    "Robertson v. NBA (1975), part 29 [court opinion]" will reasonably cite
+    "Robertson v. NBA (1975), part 29", and scoring that as a fabrication would
+    make the metric measure formatting rather than grounding.
     """
     tier = chunk.get("source_tier") or "primary"
 
@@ -74,10 +83,10 @@ def format_citation(chunk: dict[str, Any]) -> str:
         parts = [chunk["document"]]
         if chunk.get("page"):
             parts.append(f"part {chunk['page']}")
-        return ", ".join(parts) + " [court opinion]"
+        return ", ".join(parts)
 
     if tier == "timeline":
-        return f"{chunk['document']} [curated timeline entry]"
+        return str(chunk["document"])
 
     parts = [chunk["document"]]
     if chunk.get("article"):
@@ -88,16 +97,36 @@ def format_citation(chunk: dict[str, Any]) -> str:
     return ", ".join(parts)
 
 
+def format_citation(chunk: dict[str, Any]) -> str:
+    """Render a citation that states what kind of authority it carries.
+
+    Pre-1995 coverage rests on court opinions and curated entries, not on any
+    surviving CBA text. Rendered in the governing-document shape those look
+    identical to the rule itself, so the tier is made explicit here -- and a
+    court opinion gets "part N" rather than "p. N", because its blocks are an
+    artefact of how the plain text was split and are not reporter pages.
+    """
+    locator = citation_locator(chunk)
+    label = TIER_LABELS.get(chunk.get("source_tier") or "primary")
+    return f"{locator} [{label}]" if label else locator
+
+
 def format_context(chunks: Sequence[dict[str, Any]]) -> str:
-    """Render retrieved chunks as XML blocks, each carrying its own citation."""
-    blocks = []
-    for i, chunk in enumerate(chunks, start=1):
-        blocks.append(
-            f'<context id="{i}" citation="{format_citation(chunk)}">\n'
-            f"{chunk['text'].strip()}\n"
-            f"</context>"
-        )
-    return "\n\n".join(blocks)
+    """Render retrieved chunks as XML blocks, each carrying its own citation.
+
+    Deliberately no ``id`` attribute. When blocks carried both an id and a
+    citation, the model merged them and emitted "[2, citation: Robertson v. NBA
+    ..., part 1]" instead of "[Robertson v. NBA ..., part 1]". The citations
+    themselves were right; only the shape was wrong, and every one of them was
+    then scored as a fabrication. One identifier per block removes the choice.
+    """
+    return "\n\n".join(
+        f'<context citation="{citation_locator(chunk)}"'
+        f' source_type="{chunk.get("source_tier") or "primary"}">\n'
+        f"{chunk['text'].strip()}\n"
+        f"</context>"
+        for chunk in chunks
+    )
 
 
 def build_messages(

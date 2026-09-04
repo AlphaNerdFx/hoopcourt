@@ -48,10 +48,12 @@ the rulebook's *"Section II, Starting and Stopping of Shot Clock"* (p. 28).
 
 ## Not yet done
 
-* **Generation backend not installed.** `src/model/generation.py` is written and
-  wired; `pip install -r requirements-local.txt` pulls llama-cpp-python. Until
-  then `/query` returns cited sources with `answer: null`, which is a supported
-  state rather than a failure.
+* **Generation runs but is slow here.** Ollama is used when reachable, ahead of
+  llama-cpp. Cold model load is 140 to 190 seconds on this machine; once warm a
+  query answers in 10 to 15 seconds. A full 43-question generation run is
+  therefore minutes, not seconds, so `--with-generation` is opt-in.
+* **A 7B does not fit in-process here.** 4.4GB of weights against 5GB of free
+  RAM. Ollama memory maps and evicts, so the same model runs through it.
 * **CUDA unavailable on the reference machine.** torch reports the NVIDIA driver
   too old for its build (`CUDA available: False`), so embedding runs on CPU and a
   local GGUF backend would too. Not blocking: nothing on the critical path needs
@@ -85,6 +87,33 @@ the rulebook's *"Section II, Starting and Stopping of Shot Clock"* (p. 28).
   curated timeline entries. Citations declare which via `source_tier`. Eight of
   the timeline entries are medium confidence, drawn from the league's published
   history rather than from a document in the index.
+
+## Generation is measured, and it fabricates
+
+A local 7B (mistral:7b via Ollama, Q4_K_M) now answers end to end. Measured over
+the ten grounded-citation questions with `run_eval.py --with-generation`:
+
+```
+route              10/10   100%
+no_bleed           10/10   100%
+in_expected_docs   10/10   100%
+recall             10/10   100%
+citations           7/10    70%     <- generation
+```
+
+Retrieval is perfect and the model still invents a citation in roughly three
+answers out of ten: an invented Article and Section in the 2023 CBA, a page that
+was not in context, and once the max-salary provision cited in answer to a draft
+lottery question. Every one of those would read as a correct answer.
+
+This is the argument for measuring the two separately. They fail differently and
+they have different fixes, and a single end-to-end score would have hidden a
+perfect retriever behind a fabricating writer.
+
+Two cautions on the number itself. It was 50% before three measurement errors
+were removed from the checker, so treat any citation figure as provisional until
+the false-positive modes have been examined. And it is one model at one
+quantisation on ten questions.
 
 ## What the evaluation does not catch
 

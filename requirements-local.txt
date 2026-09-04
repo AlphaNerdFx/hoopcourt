@@ -1,6 +1,22 @@
-# Optional: local GGUF generation backend (Phase 5). Default generator.
-# CPU build works with no CUDA toolchain (slow but functional).
-# For CUDA: CMAKE_ARGS="-DGGML_CUDA=on" pip install -r requirements-local.txt --no-cache-dir
+# Optional: local generation. Two backends, tried in this order.
+#
+# 1. Ollama (preferred, nothing to install here)
+#    If an Ollama daemon is reachable it is used automatically. It needs no
+#    compiler, manages weights and memory itself, and is how most people already
+#    run local models. Pair it with an Apache-2.0 model to keep the stack
+#    permissively licensed end to end:
+#
+#        ollama pull mistral:7b
+#
+#    Configure with NBA_OLLAMA_MODEL and NBA_OLLAMA_URL.
+#
+#    Memory note: a 7B model at Q4_K_M is about 4.4GB of weights. Run in-process
+#    that will not fit alongside anything else on an 8GB machine, but Ollama
+#    memory maps and evicts, so it works where a direct load does not.
+#
+# 2. llama-cpp-python (fallback, compiles from source)
+#    Needs cmake and a C toolchain. CPU build works with no CUDA.
+#    For CUDA: CMAKE_ARGS="-DGGML_CUDA=on" pip install -r requirements-local.txt --no-cache-dir
 -r requirements.txt
 llama-cpp-python~=0.3
 huggingface-hub~=0.27

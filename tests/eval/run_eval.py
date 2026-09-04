@@ -27,6 +27,8 @@ from src.db.connection import get_vector_db_connection  # noqa: E402
 from src.db.schema import ambiguous_seasons  # noqa: E402
 from src.db.search import retrieve_segmented_context  # noqa: E402
 from src.ingest.embedder import Embedder  # noqa: E402
+from src.model.generation import build_generator  # noqa: E402
+from src.model.verify import verify_citations  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -47,7 +49,8 @@ class Result:
         return all(v for v in self.checks.values() if v is not None)
 
 
-def evaluate(db_path: str, questions: list[dict], verbose: bool) -> list[Result]:
+def evaluate(db_path: str, questions: list[dict], verbose: bool,
+             generator=None) -> list[Result]:
     conn = get_vector_db_connection(db_path)
     indexed = {r["doc_name"] for r in conn.execute("SELECT doc_name FROM documents")}
     # The same set the API injects, so the eval exercises the real routing path.
@@ -131,6 +134,19 @@ def evaluate(db_path: str, questions: list[dict], verbose: bool) -> list[Result]
                     r.check("recall", any(t in blob for t in terms),
                             f"none of {q['expect_terms_any']} in top-5")
 
+            # Generation is measured separately from retrieval, because they
+            # fail differently and have different fixes. Retrieval can hand over
+            # five correct chunks and the model still invent a pinpoint.
+            if generator is not None and chunks:
+                answer = generator.generate(q["question"], chunks, route,
+                                            style="scholar")
+                cite = verify_citations(answer, chunks)
+                r.check("citations", cite.ok,
+                        f"fabricated {cite.fabricated}" if cite.fabricated
+                        else "answer cited nothing")
+                if verbose:
+                    r.notes.append(f"answer: {answer[:200]}")
+
             if verbose:
                 r.notes.append("retrieved: " + (", ".join(
                     f"{c['document']}(p{c['page']},d={c['distance']:.3f})"
@@ -161,7 +177,7 @@ def report(results: list[Result]) -> int:
 
     print("\nper-check:")
     for name in ("route", "year", "trigger", "no_bleed", "in_expected_docs",
-                 "recall", "refusal", "no_anachronism"):
+                 "recall", "refusal", "no_anachronism", "citations"):
         ok, n = rate(name)
         if n:
             print(f"  {name:<18} {ok:>3}/{n:<3}  {100*ok/n:5.1f}%")
@@ -193,6 +209,8 @@ def main() -> int:
                     default=ROOT / "tests" / "eval" / "questions.yaml")
     ap.add_argument("--category")
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--with-generation", action="store_true",
+                    help="also generate answers and verify their citations")
     args = ap.parse_args()
 
     if not Path(args.db).exists():
@@ -203,8 +221,17 @@ def main() -> int:
     questions = yaml.safe_load(args.questions.read_text(encoding="utf-8"))["questions"]
     if args.category:
         questions = [q for q in questions if q["category"] == args.category]
+    generator = None
+    if args.with_generation:
+        generator = build_generator()
+        if generator is None:
+            print("no generation backend installed; "
+                  "pip install -r requirements-local.txt", file=sys.stderr)
+            return 2
+        print(f"generation backend: {generator.name}")
+
     print(f"evaluating {len(questions)} questions against {args.db}")
-    return report(evaluate(args.db, questions, args.verbose))
+    return report(evaluate(args.db, questions, args.verbose, generator))
 
 
 if __name__ == "__main__":

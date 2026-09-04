@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.api.router import MAX_PROMPT_TOKENS, TemporalRouter
 from src.api.tokens import build_counter
@@ -33,6 +33,7 @@ from src.ingest.embedder import Embedder
 from src.ingest.indexer import index_integrity
 from src.model.generation import build_generator, lookup_concept_analogy
 from src.model.prompt_templates import format_citation
+from src.model.verify import verify_citations
 
 DB_PATH = os.environ.get("NBA_LEGAL_DB", "nba_legal.db")
 BACKEND_MODE = os.environ.get("BACKEND_MODE", "local")
@@ -121,7 +122,26 @@ class Coverage(BaseModel):
     message: str | None = None
 
 
+class Grounding(BaseModel):
+    """Whether the generated answer only cited what it was given.
+
+    Reported at runtime, not just in the evaluation, because the failure it
+    catches is invisible in the answer itself: a real document carrying an
+    invented pinpoint reads exactly like a correct citation. Measured at 70% on
+    a local 7B, so a caller that displays answers should look at this.
+    """
+    checked: bool = False
+    citations: int = 0
+    supported: int = 0
+    fabricated: list[str] = []
+    uncited_claim: bool = False
+    trustworthy: bool = True
+
+
 class QueryResponse(BaseModel):
+    # A misspelled or missing field would otherwise be dropped in silence.
+    model_config = ConfigDict(extra="forbid")
+
     query: str
     route_action: str
     target_year: int | None
@@ -131,6 +151,7 @@ class QueryResponse(BaseModel):
     coverage: Coverage
     answer: str | None = None
     grounded: bool
+    grounding: Grounding = Grounding()
 
 
 @app.get("/health")
@@ -237,12 +258,22 @@ def query(request: QueryRequest, conn=Depends(get_conn)):
     )
 
     answer = None
+    grounding = Grounding()
     generator = state.get("generator")
     if generator is not None and sources:
         analogy = (lookup_concept_analogy(conn, route.get("trigger_keyword"))
                    if request.style == "casual" else None)
         answer = generator.generate(request.query, rows, route,
                                     style=request.style, analogy=analogy)
+        # The answer is checked against the chunks it was actually handed. A
+        # citation to a genuine document that was not in context is still
+        # invented: the model produced a pinpoint it could not have read.
+        report = verify_citations(answer, rows + timeline_rows)
+        grounding = Grounding(
+            checked=True, citations=report.total,
+            supported=len(report.supported), fabricated=report.fabricated,
+            uncited_claim=report.uncited_claim, trustworthy=report.ok,
+        )
 
     return QueryResponse(
         query=request.query,
@@ -253,6 +284,7 @@ def query(request: QueryRequest, conn=Depends(get_conn)):
         timeline=timeline,
         coverage=coverage,
         answer=answer,
+        grounding=grounding,
         # No sources means no grounded answer is possible. Saying so is the
         # correct outcome, not a degraded one (CLAUDE.md sec.2.2).
         grounded=bool(sources),

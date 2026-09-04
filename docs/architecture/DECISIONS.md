@@ -321,8 +321,10 @@ answers. So the manifest is now checked mechanically:
 * **`scripts/build_index.py`** now prunes indexed documents the manifest no
   longer lists, so a rename cannot strand its predecessor.
 
-**Still open:** the Uniform Player Contract's `source_url` points at
-`scribd.com`, a third-party upload host that `DATA_SOURCES.md` rules out, and
-which serves an HTML viewer rather than the PDF. Given D12's finding that the
-document is inert, dropping the entry is a reasonable alternative to sourcing it
-properly, both resolve the issue and neither costs retrieval quality.
+**Resolved:** the entry was dropped. Its only source was a Scribd viewer page,
+which `DATA_SOURCES.md` rules out, and D12 had already measured the document as
+inert: zero retrievals across five contract-focused queries at k=5, because
+CBA 2017 contains the same text in roughly thirty times as many chunks. Removing
+it cost 35 chunks and no retrieval quality, and every source URL in the corpus
+now resolves to the right document. The file itself is untouched under `data/`,
+so relisting it is one manifest entry away.

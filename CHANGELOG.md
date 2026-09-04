@@ -20,12 +20,20 @@ is measured, not just the retrieval layer.
   citation to a "1996 NBA Collective Bargaining Agreement", an agreement that
   does not exist.
 - `run_eval.py --with-generation` measures citation validity alongside retrieval.
+- `grounding` block on `/query` responses, so a caller can see whether the
+  answer cited only what it was given without running the evaluation.
 
 ### Changed
 
 - Context blocks carry one identifier, not two. Given both an `id` and a
   `citation` the model merged them into `[1, citation: ...]`, so correct
   citations were scored as fabrications.
+- `QueryResponse` forbids extra fields. A `grounding=` argument was constructed,
+  passed, and silently dropped from every response while every test passed,
+  because Pydantic ignores unknown keywords by default.
+- `--check-urls` expects a format per source tier. Court opinions come from the
+  Caselaw Access Project as JSON, and demanding PDF everywhere reported all
+  seven as viewer pages.
 - The tier label is separated from the citation locator. `[... , part 29]` and
   `[... , part 29 [court opinion]]` are both accepted, because the label is
   added for the reader rather than being part of the reference.

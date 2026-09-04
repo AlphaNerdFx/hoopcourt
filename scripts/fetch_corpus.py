@@ -161,8 +161,18 @@ def cmd_check_urls(entries: list[dict], data_dir: Path, timeout: int) -> int:
             except Exception:
                 code = "ERR"
 
-        if code == "200" and "pdf" not in ctype.lower():
-            verdict, bad = "NOT A PDF (viewer page?)", True
+        # Expected format depends on the tier. Governing documents are PDFs;
+        # court opinions come from the Caselaw Access Project as JSON. Demanding
+        # PDF everywhere flagged all seven opinions as viewer pages, which is the
+        # kind of standing false alarm that trains people to ignore the check.
+        tier = e.get("source_tier", "primary")
+        expected = "json" if tier == "judicial" else "pdf"
+        if code == "200" and expected not in ctype.lower():
+            verdict, bad = f"NOT {expected.upper()} (viewer page?)", True
+        elif code == "200" and expected == "json":
+            # The rendered .txt will not match the JSON payload's size, so a
+            # reachable, correctly-typed response is all this can assert.
+            verdict, bad = "reachable (CAP JSON)", False
         elif code == "200" and remote_size and local_size and remote_size == local_size:
             verdict, bad = "matches local file", False
         elif code == "200" and remote_size and local_size:

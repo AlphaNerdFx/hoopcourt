@@ -54,8 +54,7 @@ questions:
   question: "How many seasons could a player contract cover in 2020?"
   expect_route: strict_season_filter
   expect_year: 2020
-  expect_documents: ["CBA 2017", "NBA Constitution 2019",
-                     "NBA Uniform Player Contract (2017 CBA Exhibit A)"]
+  expect_documents: ["CBA 2017", "NBA Constitution 2019"]
   forbid_documents: ["2023 NBA CBA", "CBA 2011", "CBA 1995", "NBPA CBA 1999"]
   expect_terms_any: ["Seasons", "Contract", "term"]
 
@@ -92,8 +91,7 @@ questions:
   clarified_season: "2019-20"   # boundary year: two seasons, different documents
   expect_route: strict_season_filter
   expect_year: 2019
-  expect_documents: ["CBA 2017", "NBA Constitution 2019",
-                     "NBA Uniform Player Contract (2017 CBA Exhibit A)"]
+  expect_documents: ["CBA 2017", "NBA Constitution 2019"]
   forbid_documents: ["2023 NBA CBA", "CBA 1995", "CBA 2005", "CBA 2011"]
   expect_terms_any: ["Rookie", "Scale", "First Round"]
 
@@ -130,8 +128,7 @@ questions:
   question: "How did the escrow system split revenue between players and teams in 2018?"
   expect_route: strict_season_filter
   expect_year: 2018
-  expect_documents: ["CBA 2017", "NBA Constitution 2012",
-                     "NBA Uniform Player Contract (2017 CBA Exhibit A)"]
+  expect_documents: ["CBA 2017", "NBA Constitution 2012"]
   forbid_documents: ["2023 NBA CBA", "CBA 1995", "NBPA CBA 1999"]
   expect_terms_any: ["Escrow", "Basketball Related Income", "BRI"]
 

@@ -138,14 +138,22 @@ def evaluate(db_path: str, questions: list[dict], verbose: bool,
             # fail differently and have different fixes. Retrieval can hand over
             # five correct chunks and the model still invent a pinpoint.
             if generator is not None and chunks:
-                answer = generator.generate(q["question"], chunks, route,
-                                            style="scholar")
-                cite = verify_citations(answer, chunks)
-                r.check("citations", cite.ok,
-                        f"fabricated {cite.fabricated}" if cite.fabricated
-                        else "answer cited nothing")
-                if verbose:
-                    r.notes.append(f"answer: {answer[:200]}")
+                # A backend failure is recorded against the question, not raised.
+                # One request timing out during a cold model load used to abort
+                # the whole run and discard every result already gathered.
+                try:
+                    answer = generator.generate(q["question"], chunks, route,
+                                                style="scholar")
+                except Exception as exc:
+                    r.check("citations", False,
+                            f"generation failed: {type(exc).__name__}")
+                else:
+                    cite = verify_citations(answer, chunks)
+                    r.check("citations", cite.ok,
+                            f"fabricated {cite.fabricated}" if cite.fabricated
+                            else "answer cited nothing")
+                    if verbose:
+                        r.notes.append(f"answer: {answer[:200]}")
 
             if verbose:
                 r.notes.append("retrieved: " + (", ".join(

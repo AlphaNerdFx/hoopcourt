@@ -83,14 +83,20 @@ class OllamaGenerator:
     """
 
     def __init__(self, model: str = DEFAULT_OLLAMA_MODEL,
-                 base_url: str = DEFAULT_OLLAMA_URL, timeout: int = 300):
+                 base_url: str = DEFAULT_OLLAMA_URL, timeout: int = 900,
+                 keep_alive: str = "30m"):
         import urllib.error
         import urllib.request
 
         self._urllib = urllib.request
         self._model = model
         self._base = base_url.rstrip("/")
+        # A cold load of a 7B on this class of machine takes 140-190s before a
+        # single token is produced, so a short timeout kills the request while
+        # the model is still being read off disk. keep_alive holds it in memory
+        # so a batch of queries pays that cost once rather than repeatedly.
         self._timeout = timeout
+        self._keep_alive = keep_alive
 
         # Fail construction rather than the first query, so build_generator can
         # fall through to another backend.
@@ -112,6 +118,7 @@ class OllamaGenerator:
             "messages": messages,
             "stream": False,
             # Grounding matters more than fluency, so decoding is deterministic.
+            "keep_alive": self._keep_alive,
             "options": {"temperature": 0.0, "num_ctx": DEFAULT_N_CTX,
                         "num_predict": DEFAULT_MAX_TOKENS},
         }).encode("utf-8")

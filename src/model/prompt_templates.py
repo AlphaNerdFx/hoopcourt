@@ -26,8 +26,11 @@ Rules you must follow exactly:
    citation attribute of the block you used, copied exactly and alone:
        correct:   [2023 NBA CBA, Article II, Section 7, p. 37]
        wrong:     [1], [block 1], [1, citation: 2023 NBA CBA ...], [see above]
-   Never cite a source that is not among the blocks below, and never cite a case
-   or page mentioned inside a block's text. Only the block's own citation.
+   A citation contains nothing but an entry from the permitted list, copied
+   whole. Do not append sub-paragraph detail of your own: if the list says
+   "p. 57", cite "p. 57", never "p. 57 (a)".
+   Never cite a case or page mentioned inside a block's text, only the block's
+   own citation.
 3. If the context does not contain the answer, say so plainly and stop. Do not
    reason from general knowledge of the NBA, and do not fill gaps with what is
    typical or likely.
@@ -129,6 +132,20 @@ def format_context(chunks: Sequence[dict[str, Any]]) -> str:
     )
 
 
+def permitted_citations(chunks: Sequence[dict[str, Any]]) -> str:
+    """An explicit closed list of what may be cited.
+
+    The prompt already forbade citing anything absent from the context, and the
+    model still invented pinpoints roughly three times in ten: an Article and
+    Section that do not exist, a page that was not supplied, and once a real
+    provision borrowed from an unrelated question. A negative instruction asks
+    the model to check a boundary it cannot see. A closed list makes the
+    boundary explicit and enumerable.
+    """
+    lines = [citation_locator(c) for c in chunks]
+    return "\n".join(f"  {line}" for line in lines)
+
+
 def build_messages(
     query: str,
     chunks: Sequence[dict[str, Any]],
@@ -155,7 +172,12 @@ def build_messages(
     if not chunks:
         user = f"{NO_CONTEXT_INSTRUCTION}\n\nQuestion: {query}"
     else:
-        user = f"{format_context(chunks)}\n\nQuestion: {query}"
+        user = (
+            f"{format_context(chunks)}\n\n"
+            f"You may cite only these {len(chunks)} citations, copied exactly. "
+            f"There are no others:\n{permitted_citations(chunks)}\n\n"
+            f"Question: {query}"
+        )
 
     return [{"role": "system", "content": system},
             {"role": "user", "content": user}]

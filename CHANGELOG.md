@@ -22,6 +22,16 @@ is measured, not just the retrieval layer.
 - `run_eval.py --with-generation` measures citation validity alongside retrieval.
 - `grounding` block on `/query` responses, so a caller can see whether the
   answer cited only what it was given without running the evaluation.
+- `.env.example` documenting all eight configuration variables at their defaults.
+- Explicit closed list of permitted citations in the prompt, which raised
+  citation validity from 7/10 to 8/10 and removed every invented pinpoint.
+
+### Fixed
+
+- Ollama timeout raised to 900s with a 30m keep_alive. A cold 7B load takes
+  140-190s, and the previous 300s ceiling killed requests mid-load.
+- A generation failure is now recorded against its question rather than aborting
+  the evaluation run and discarding every result already gathered.
 
 ### Changed
 

@@ -130,18 +130,31 @@ def retrieve_timeline(
     if rows:
         return rows
 
-    # Nothing dated to the routed era. Only now widen to the whole timeline,
-    # because "when was the salary cap introduced?" carries no year, routes to
-    # the current season, and the entry that answers it is scoped 1983-1994.
+    # Nothing dated to the routed era. Widen only when the question is about a
+    # season LATER than anything the timeline covers, because "when was the
+    # salary cap introduced?" carries no year, routes to the current season, and
+    # the entry answering it is scoped 1983-1994.
     #
-    # The fallback is deliberately conditional. Searching the whole timeline
-    # unconditionally would let a 1985 entry answer a 1975 question, which is
-    # the anachronism this project exists to prevent. It can only fire when the
-    # routed era has no timeline entry of its own to contradict, which in this
-    # corpus means a season from 1995 onward.
-    all_timeline = [r["id"] for r in conn.execute(
-        "SELECT id FROM documents WHERE source_tier = ? ORDER BY id",
-        (TIMELINE_TIER,))]
+    # The earlier version widened whenever the routed era had no entry, on the
+    # reasoning that this could only mean a modern season. It also means a season
+    # BEFORE the timeline begins: a 1940 question was returning entries about
+    # 1946-1994 rules while the coverage block correctly said nothing covered
+    # 1940. That is the same anachronism the era filter exists to prevent, just
+    # pointing backwards.
+    season = route_data.get("target_year")
+    latest = conn.execute(
+        "SELECT max(end_season) FROM documents WHERE source_tier = ?",
+        (TIMELINE_TIER,),
+    ).fetchone()[0]
+    if season is None or latest is None or int(season) <= int(latest):
+        return []
+
+    all_timeline = [
+        r["id"] for r in conn.execute(
+            "SELECT id FROM documents WHERE source_tier = ? ORDER BY id",
+            (TIMELINE_TIER,),
+        )
+    ]
     if not all_timeline:
         return []
     wide = retrieve_by_documents(conn, query_embedding, all_timeline, k=k)

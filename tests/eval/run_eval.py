@@ -216,6 +216,11 @@ def main() -> int:
     ap.add_argument("--questions", type=Path,
                     default=ROOT / "tests" / "eval" / "questions.yaml")
     ap.add_argument("--category")
+    ap.add_argument("--id", action="append", dest="ids", metavar="QUESTION_ID",
+                    help="run only these question ids; repeatable. Generation "
+                         "is deterministic, so re-running the handful of "
+                         "questions a backend restart cost is exact rather "
+                         "than an approximation of the full run.")
     ap.add_argument("--verbose", action="store_true")
     ap.add_argument("--with-generation", action="store_true",
                     help="also generate answers and verify their citations")
@@ -229,6 +234,14 @@ def main() -> int:
     questions = yaml.safe_load(args.questions.read_text(encoding="utf-8"))["questions"]
     if args.category:
         questions = [q for q in questions if q["category"] == args.category]
+    if args.ids:
+        wanted = set(args.ids)
+        questions = [q for q in questions if q["id"] in wanted]
+        missing = wanted - {q["id"] for q in questions}
+        if missing:
+            print(f"no such question id: {', '.join(sorted(missing))}",
+                  file=sys.stderr)
+            return 2
     generator = None
     if args.with_generation:
         generator = build_generator()
@@ -238,6 +251,9 @@ def main() -> int:
             return 2
         print(f"generation backend: {generator.name}")
 
+    if not questions:
+        print("no questions selected", file=sys.stderr)
+        return 2
     print(f"evaluating {len(questions)} questions against {args.db}")
     return report(evaluate(args.db, questions, args.verbose, generator))
 

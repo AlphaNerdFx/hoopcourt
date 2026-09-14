@@ -45,6 +45,20 @@ DEFAULT_MAX_TOKENS = 600
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_OLLAMA_MODEL = "mistral:7b"
 
+# Ollama disables mmap when the host is under memory pressure, which turns a
+# 4.1 GiB memory-mapped file into ~6 GiB of anonymous RSS that the kernel cannot
+# evict. On a machine with 7.4 GiB usable -- a WSL2 default, which is half the
+# Windows total rather than the 16 GiB in CLAUDE.md sec.3.1 -- the OOM killer
+# takes llama-server, systemd restarts ollama, and every request in flight dies
+# with RemoteDisconnected or a connection refused. Measured: 3 of 26 evaluation
+# questions lost this way in a single run.
+#
+# The server comes back by itself, so the request is recoverable and only the
+# transport failed. Retrying is the difference between a lost answer and a slow
+# one; the per-attempt timeout already covers the model reload that follows.
+OLLAMA_RETRY_ATTEMPTS = 3
+OLLAMA_RETRY_BACKOFF = (10.0, 30.0)
+
 DEFAULT_LOCAL_REPO = "Qwen/Qwen2.5-7B-Instruct-GGUF"
 DEFAULT_LOCAL_FILE = "qwen2.5-7b-instruct-q4_k_m.gguf"
 DEFAULT_CLOUD_MODEL = "claude-opus-5"
@@ -122,12 +136,46 @@ class OllamaGenerator:
             "options": {"temperature": 0.0, "num_ctx": DEFAULT_N_CTX,
                         "num_predict": DEFAULT_MAX_TOKENS},
         }).encode("utf-8")
-        req = self._urllib.Request(
-            f"{self._base}/api/chat", data=payload,
-            headers={"Content-Type": "application/json"})
-        with self._urllib.urlopen(req, timeout=self._timeout) as r:
-            body = json.load(r)
-        return (body.get("message") or {}).get("content", "").strip()
+        return self._post_with_retry(payload)
+
+    def _post_with_retry(self, payload: bytes) -> str:
+        """POST /api/chat, retrying only failures that are worth retrying.
+
+        A transport failure means the server went away mid-request: it is about
+        the connection, not the question, and the same payload will succeed once
+        ollama is back. An HTTP error response is the opposite -- the server
+        answered, and answered that the request was wrong -- so it is raised
+        immediately rather than repeated three times.
+        """
+        import http.client
+        import time
+        import urllib.error
+
+        transient = (http.client.RemoteDisconnected, http.client.IncompleteRead,
+                     ConnectionResetError, ConnectionRefusedError)
+        last: Exception | None = None
+        for attempt in range(OLLAMA_RETRY_ATTEMPTS):
+            req = self._urllib.Request(
+                f"{self._base}/api/chat", data=payload,
+                headers={"Content-Type": "application/json"})
+            try:
+                with self._urllib.urlopen(req, timeout=self._timeout) as r:
+                    body = json.load(r)
+            except urllib.error.HTTPError:
+                raise
+            except (urllib.error.URLError, *transient) as exc:
+                # URLError wraps the socket error, including the refused
+                # connection seen while systemd is restarting the unit.
+                last = exc
+                if attempt == OLLAMA_RETRY_ATTEMPTS - 1:
+                    break
+                time.sleep(OLLAMA_RETRY_BACKOFF[
+                    min(attempt, len(OLLAMA_RETRY_BACKOFF) - 1)])
+                continue
+            return (body.get("message") or {}).get("content", "").strip()
+        raise RuntimeError(
+            f"ollama at {self._base} failed {OLLAMA_RETRY_ATTEMPTS} times; "
+            f"last error {type(last).__name__}: {last}") from last
 
 
 class LocalGGUFGenerator:

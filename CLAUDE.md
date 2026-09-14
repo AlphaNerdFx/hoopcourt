@@ -55,6 +55,17 @@ Hoopcourt is an era-agnostic legal NBA expert RAG engine designed to interpret t
 ### 3.1 Supported Hardware Profiles
 * **Default Laptop Profile**: NVIDIA RTX 4060 (8GB VRAM) + 16GB System RAM.
   * Model context (`n_ctx`) set to **8192**. The former 2048 cap was arithmetically impossible: a 1,000-token question plus five retrieved legal chunks plus the system prompt exceeds it before generation begins, silently truncating away the citations the design depends on. A 7-8B GQA model spends ~128 KiB/token of KV cache, so 8192 tokens is ~1 GiB on top of ~4.9 GiB of Q4_K_M weights, about 6 GiB, which fits 8 GB VRAM.
+  * **System RAM is the binding constraint on WSL2, not VRAM.** WSL2 grants the
+    Linux guest roughly half the Windows total by default, so the 16 GB profile
+    above is 7.4 GB usable in practice. Below about 8 GB free, ollama logs
+    `disabling mmap for llama-server load due to host memory pressure` and loads
+    the weights into anonymous memory instead of a mapped file: 4.1 GiB on disk
+    becomes ~6.3 GiB of RSS the kernel cannot evict, and the OOM killer takes
+    llama-server. Measured on this machine, that cost 3 of 26 evaluation
+    questions in one run. Raise the guest allocation in `.wslconfig`
+    (`memory=12GB`) or do not run anything else during a generation run.
+    `OllamaGenerator` retries the transport failure that follows a restart, so
+    the answer is delayed rather than lost.
 * **CPU-Only Fallback**: Startup script (`init.sh`) must warn users of degraded performance ($<3$ tokens/sec) and prompt for explicit confirmation or fallback to Cloud Mode.
 
 ---

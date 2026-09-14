@@ -75,7 +75,8 @@ def audit(manifest_path: Path, data_dir: Path, samples: int) -> int:
     print(f"{'DOCUMENT':<38}{'PAGES':>6}{'CHARS/PG':>9}{'FUSED/PG':>9}  VERDICT")
     print("-" * 78)
 
-    needs_ocr, mangled, missing, total_pages = [], [], [], 0
+    needs_ocr, mangled, missing = [], [], []
+    pdf_pages = text_blocks = 0
     for entry in entries:
         source = data_dir / entry["file"]
         name = entry["doc_name"]
@@ -85,7 +86,13 @@ def audit(manifest_path: Path, data_dir: Path, samples: int) -> int:
             continue
         is_pdf = source.suffix.lower() == ".pdf"
         n, texts = sample_pages(source, samples)
-        total_pages += n
+        # Counted apart: a PDF page is a real page, a text block is this
+        # script's own slicing unit. Adding them yields a number that means
+        # nothing and invites being quoted as a page count.
+        if is_pdf:
+            pdf_pages += n
+        else:
+            text_blocks += n
         counts = [len(t) for t in texts]
         fused = [len(RE_RUN_TOGETHER.findall(t)) for t in texts]
         median = statistics.median(counts) if counts else 0
@@ -106,7 +113,8 @@ def audit(manifest_path: Path, data_dir: Path, samples: int) -> int:
         print(f"{name:<38}{n:>6}{median:>9.0f}{median_fused:>9.0f}  {verdict}")
 
     print("-" * 78)
-    print(f"{len(entries) - len(missing)} document(s) checked, {total_pages} pages")
+    print(f"{len(entries) - len(missing)} document(s) checked, "
+          f"{pdf_pages:,} PDF pages and {text_blocks:,} text blocks")
     if missing:
         print(f"{len(missing)} missing -- run scripts/fetch_corpus.py: "
               f"{', '.join(missing)}")

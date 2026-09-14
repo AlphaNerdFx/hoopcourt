@@ -78,3 +78,25 @@ def test_content_words_survive():
     out = retrieval_text("What was the maximum annual salary in 2024?", FILTERED)
     for word in ("maximum", "annual", "salary"):
         assert word in out
+
+
+def test_the_rewrite_is_scoped_to_the_embedding_only():
+    """The stripped text must never reach the model.
+
+    The prompt needs the year twice over: the question itself says "in 2024",
+    and `build_messages` adds "drawn exclusively from documents governing the
+    2024-25 season". Passing the stripped text to the generator would remove the
+    first and make the answer vaguer than the question asked for, while gaining
+    nothing, because the prompt is not what retrieval ranks on.
+
+    Asserted against the source rather than behaviour: both call sites are one
+    edit away from "helpfully" reusing the rewritten string.
+    """
+    root = Path(__file__).resolve().parents[1]
+    for path, call in ((root / "src" / "api" / "main.py", "request.query"),
+                       (root / "tests" / "eval" / "run_eval.py", 'q["question"]')):
+        src = path.read_text(encoding="utf-8")
+        line = next(ln for ln in src.splitlines() if "generate(" in ln
+                    and "def generate" not in ln)
+        assert call in line, f"{path.name} passes {line.strip()!r} to generate()"
+        assert "retrieval_text" not in line

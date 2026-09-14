@@ -35,6 +35,7 @@ SAMPLE_FRACTIONS = (0.15, 0.30, 0.45, 0.60, 0.75, 0.90)
 # chunks affected before X_TOLERANCE was tuned, so this is checked, not assumed.
 RE_RUN_TOGETHER = re.compile(r"[a-z][A-Z][a-z]")
 RUN_TOGETHER_LIMIT = 3    # per sampled page, averaged
+MIN_TRUSTWORTHY_SAMPLES = 3   # below this the median is one sparse page
 
 # Court opinions arrive as plain text from the Caselaw Access Project, not as
 # PDFs, so they have no pages and no text layer to sample. They are still worth
@@ -121,7 +122,18 @@ def audit(manifest_path: Path, data_dir: Path, samples: int) -> int:
     if needs_ocr:
         print(f"\n{len(needs_ocr)} document(s) carry no usable text: "
               f"{', '.join(needs_ocr)}")
-        print("An OCR ingestion path is now justified (BUILD_SEQUENCE.md Step 3).")
+        if samples < MIN_TRUSTWORTHY_SAMPLES:
+            # With one or two sampled pages the median is one or two pages, and
+            # a title page or a plate carries almost no text. Measured: at
+            # --samples 1 this condemns the Officials Guide and NBA
+            # Constitution 2012, both of which pass comfortably at 3.
+            print(f"CAUTION: only {samples} page(s) sampled per document. That "
+                  f"is too few to conclude anything; re-run with "
+                  f"--samples {MIN_TRUSTWORTHY_SAMPLES} or more before "
+                  f"believing this.")
+        else:
+            print("An OCR ingestion path is now justified "
+                  "(BUILD_SEQUENCE.md Step 3).")
         return 1
     if mangled:
         print(f"\n{len(mangled)} document(s) extract with fused words: "

@@ -93,3 +93,22 @@ def test_suffix_check_is_case_insensitive(tmp_path, suffix):
     src.write_text(PROSE * 50, encoding="utf-8")
     n, _ = sample_pages(src, samples=6)
     assert n >= 1
+
+
+def test_a_thin_verdict_from_too_few_samples_says_so(tmp_path, capsys):
+    """At --samples 1 the median is a single page, and a title page carries
+    almost no text. Measured against the real corpus, that condemns two
+    documents which pass comfortably at 3. The exit code still fails, but the
+    output must not claim an OCR path is justified on that evidence."""
+    manifest, data = _corpus(tmp_path, "Thin v. NBA", "thin.txt", "Syllabus.")
+    assert audit(manifest, data, samples=1) == 1
+    out = capsys.readouterr().out
+    assert "CAUTION" in out
+    assert "OCR ingestion path is now justified" not in out
+
+
+def test_a_thin_verdict_from_enough_samples_does_not_caution(tmp_path, capsys):
+    manifest, data = _corpus(tmp_path, "Thin v. NBA", "thin.txt", "Syllabus.")
+    assert audit(manifest, data, samples=6) == 1
+    out = capsys.readouterr().out
+    assert "CAUTION" not in out

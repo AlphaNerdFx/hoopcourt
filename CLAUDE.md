@@ -186,8 +186,9 @@ Every prompt must be wrapped in isolated Llama-3 Instruct message tags (`<|im_st
    * `BACKEND_MODE=cloud`: User prompts are ephemeral in-memory only; require explicit UI consent and Zero-Data-Retention (ZDR) third-party API configurations.
 3. **Indirect Prompt Injection Defense**:
    * **No OCR stage exists**, so there is no bounding-box confidence to filter on.
-     All 25 corpus documents carry usable text layers, re-checked by
-     `scripts/audit_corpus.py`, which fails loudly if that stops being true.
+     All 25 manifest sources carry usable text: 18 PDFs with real text layers
+     and 7 plain-text court opinions. `scripts/audit_corpus.py` re-checks both
+     kinds and fails loudly if that stops being true.
      The residual defence is that `vec_chunks` receives only chunks marked
      `is_verified = 1`, so it *is* the active index: withhold-until-approved
      holds by construction rather than by a filter a caller can forget. There is
@@ -210,7 +211,7 @@ keeps the CUDA toolchain and the OCR pipeline off the critical path.
 
 ```
 [x] Phase 0: .gitignore before git init (corpus excluded; verified)
-[x] Phase 1: Direct text extraction, 25 docs / 3,385 pages   -> src/parser/
+[x] Phase 1: Direct text extraction, 18 PDFs / 3,385 pages   -> src/parser/
 [x] Phase 2: Chunking + embeddings + index population        -> src/ingest/
 [x] Phase 3: Labelled eval set (43 questions) + runner       -> tests/eval/
 [x] Phase 4: FastAPI assembly, token gate, temporal router   -> src/api/
@@ -226,8 +227,8 @@ Superseded from the original sequence:
 * **Step 9 (Streamlit OCR UI)**, cut; with no OCR it guards an empty queue.
 
 Measured status: 43/43 on the evaluation with temporal isolation at 100%, the
-gate; 273 unit tests green; index 46 documents / 5,725 chunks / 0 orphaned
-vectors. Generation is separate: citation validity measured at 8/10 on the
+gate; 300 unit tests green; index 46 documents (18 PDFs, 7 opinions, 21
+timeline entries) / 5,725 chunks / 0 orphaned vectors. Generation is separate: citation validity measured at 8/10 on the
 grounded-citation subset, so the retriever is clean and the writer still
 fabricates. Run `python tests/eval/run_eval.py [--with-generation]` for current
 numbers, and read DECISIONS.md before trusting any of them.

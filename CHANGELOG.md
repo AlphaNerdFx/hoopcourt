@@ -35,9 +35,26 @@ is measured, not just the retrieval layer.
   parse of the inline script. String assertions pass over JavaScript that does
   not parse; the page then serves fine and every button does nothing.
 - Tests for `scripts/audit_corpus.py`, which had none.
+- `run_eval.py --id` runs named questions, for repairing what a backend restart
+  cost without re-running the whole suite.
+- `docs/evaluation/GENERATION_MEASUREMENT.md`: what the citation figure measures,
+  why it is a range rather than a number, the model comparison and its verdict.
 
 ### Fixed
 
+- **An explicit year in a query was competing with the era filter.** The year was
+  consumed twice: by the filter, which is its job, and by the embedding, where it
+  matched any passage mentioning that year. A governing document states a rule
+  once and then works through dated examples of it, so the examples outranked the
+  rule. "What was the maximum annual salary a player could receive in 2024?"
+  returned five apron and extension worked examples and never reached Article II
+  Section 7, the provision that states the rule; with the year removed from the
+  embedded text it ranks 2nd. See DECISIONS.md D18.
+- **Four recall checks could not fail**, which is what hid the defect above. The
+  check accepts any one of several terms, and those four accepted a term
+  appearing in 49% to 95% of the expected document. Tightened to discriminative
+  terms, which dropped the suite to 41/43 and exposed the retrieval defect; it is
+  43/43 again after fixing it, now against the harder terms.
 - The corpus audit crashed on every court opinion. Phase 7 added 7 plain-text
   opinions to a manifest the audit read with `pdfplumber`, so the guard named in
   CLAUDE.md and TODO.md raised `PdfminerException` on every run from the moment

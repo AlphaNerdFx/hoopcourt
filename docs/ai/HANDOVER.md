@@ -29,8 +29,16 @@ Licence MIT. Dependencies deliberately permissive throughout.
 
 ```
 git       8 commits on master, tagged v0.1.0, nothing pushed, no remote
-tests     273 passing, ruff clean
+tests     318 passing, ruff clean
 eval      43/43, temporal isolation 100% (the gate)
+
+> **Superseded in part, 2026-09-15.** The 8/10 figure quoted below was the
+> 10-question `grounded_citation` category, not the full sample, and it does not
+> generalise: over all 26 answerable questions mistral scores 17-19 depending on
+> the run. Generation is **not reproducible at temperature 0** on this stack, so
+> any single figure here is a sample. The 43/43 above is now measured against
+> tightened recall terms after a real retrieval defect was found and fixed
+> (DECISIONS.md D18). Read docs/evaluation/GENERATION_MEASUREMENT.md first.
 index     46 documents, 5,725 chunks, 0 orphaned vectors, 0.42% fused text
 corpus    25 manifest documents, coverage 1964-2029, plus timeline from 1946
 sources   all 25 source URLs verified reachable and correct
@@ -324,7 +332,7 @@ python scripts/audit_corpus.py     # text layers and fused-word check
 python scripts/build_index.py      # ~80 min on CPU, one-time
 python scripts/seed_concepts.py    # historical analogies
 
-make check                         # lint + 273 tests + eval
+make check                         # lint + 318 tests + eval
 python tests/eval/run_eval.py --db nba_legal.db --with-generation
 uvicorn src.api.main:app --reload
 ```

@@ -63,7 +63,10 @@ eval:
 check: lint test eval
 
 serve:
-	$(VENV)/bin/uvicorn src.api.main:app --reload
+	# python -m, not $(VENV)/bin/uvicorn: the console script only exists if
+	# uvicorn was installed into this venv, and a venv created with
+	# --system-site-packages can import it while having no script for it.
+	$(PY) -m uvicorn src.api.main:app --reload
 
 clean:
 	rm -rf .pytest_cache **/__pycache__ build_full.log

@@ -161,8 +161,21 @@ class OllamaGenerator:
             try:
                 with self._urllib.urlopen(req, timeout=self._timeout) as r:
                     body = json.load(r)
-            except urllib.error.HTTPError:
-                raise
+            except urllib.error.HTTPError as exc:
+                # 4xx is about the request and will fail again identically.
+                # 5xx is about the server: ollama answers 500 when llama-server
+                # dies or cannot allocate, including a transient
+                # "cudaMalloc failed: out of memory" while a previous model is
+                # still releasing VRAM. That succeeds seconds later, so it is
+                # retried like any other transport failure.
+                if exc.code < 500:
+                    raise
+                last = exc
+                if attempt == OLLAMA_RETRY_ATTEMPTS - 1:
+                    break
+                time.sleep(OLLAMA_RETRY_BACKOFF[
+                    min(attempt, len(OLLAMA_RETRY_BACKOFF) - 1)])
+                continue
             except (urllib.error.URLError, *transient) as exc:
                 # URLError wraps the socket error, including the refused
                 # connection seen while systemd is restarting the unit.

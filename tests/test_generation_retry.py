@@ -145,3 +145,39 @@ def test_a_first_attempt_success_costs_nothing(monkeypatch, generator, no_sleep)
     monkeypatch.setattr(urllib.request, "urlopen", fine)
     assert generator.generate("cap?", _chunks(), _route())
     assert calls["n"] == 1
+
+
+def test_a_5xx_is_retried(monkeypatch, generator, no_sleep):
+    """ollama answers 500 when llama-server dies or cannot allocate, including
+    a transient "cudaMalloc failed: out of memory" while a previous model is
+    still releasing VRAM. Seen for real against a GPU that was 86% free seconds
+    later. That is a server problem, not a request problem."""
+    calls = {"n": 0}
+
+    def flaky(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise urllib.error.HTTPError(
+                "http://127.0.0.1:11434/api/chat", 500,
+                "llama-server process has terminated", {}, None)
+        return _chat("Answer [2023 NBA CBA, Article VII, Section 2, p. 10]")
+
+    monkeypatch.setattr(urllib.request, "urlopen", flaky)
+    assert generator.generate("cap?", _chunks(), _route())
+    assert calls["n"] == 2
+
+
+@pytest.mark.parametrize("code", [400, 404, 422])
+def test_a_4xx_is_still_raised_at_once(monkeypatch, generator, no_sleep, code):
+    """A malformed request fails identically three times. Retrying only hides
+    the real error behind two backoffs."""
+    calls = {"n": 0}
+
+    def bad(*a, **k):
+        calls["n"] += 1
+        raise urllib.error.HTTPError("http://x/api/chat", code, "nope", {}, None)
+
+    monkeypatch.setattr(urllib.request, "urlopen", bad)
+    with pytest.raises(urllib.error.HTTPError):
+        generator.generate("cap?", _chunks(), _route())
+    assert calls["n"] == 1

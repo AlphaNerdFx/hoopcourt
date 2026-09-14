@@ -168,3 +168,37 @@ def test_interior_year_is_answered_without_a_clarification_round_trip(client):
     r = client.post("/query", json={"query": "What was the luxury tax in 2015?"})
     assert r.status_code == 200
     assert r.json()["target_year"] == 2015
+
+
+def test_a_failing_generator_returns_sources_not_a_500(client):
+    """Found against a real backend, not in a test.
+
+    ollama returned 500 ("cudaMalloc failed: out of memory", transiently, while
+    a previous model released VRAM). Nothing caught it, so `/query` returned
+    500 and threw away five correct citations that retrieval had already found.
+
+    The response contract already allows `answer: null` when no backend is
+    installed. A backend that errored is the same situation from the caller's
+    side, so it degrades to that rather than failing the request.
+    """
+    from src.api import main as main_mod
+
+    class ExplodingGenerator:
+        name = "ollama:exploding"
+
+        def generate(self, *a, **k):
+            raise RuntimeError("llama-server process has terminated")
+
+    main_mod.state["generator"] = ExplodingGenerator()
+    try:
+        r = client.post("/query", json={"query": "What was the Salary Cap in 2015?"})
+    finally:
+        main_mod.state["generator"] = None
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["answer"] is None
+    assert body["sources"], "retrieval succeeded and must still be returned"
+    # Nothing was generated, so nothing was checked. Reporting trustworthy=True
+    # here would claim a clean grounding result for an answer that never existed.
+    assert body["grounding"]["checked"] is False

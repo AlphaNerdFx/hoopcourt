@@ -10,6 +10,7 @@ generation into a servable API.
 """
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -74,6 +75,8 @@ async def lifespan(app: FastAPI):
     yield
     state.clear()
 
+
+logger = logging.getLogger("hoopcourt.api")
 
 app = FastAPI(
     title="Hoopcourt",
@@ -274,11 +277,22 @@ def query(request: QueryRequest, conn=Depends(get_conn)):
     if generator is not None and sources:
         analogy = (lookup_concept_analogy(conn, route.get("trigger_keyword"))
                    if request.style == "casual" else None)
-        answer = generator.generate(request.query, rows, route,
-                                    style=request.style, analogy=analogy)
-        # The answer is checked against the chunks it was actually handed. A
-        # citation to a genuine document that was not in context is still
-        # invented: the model produced a pinpoint it could not have read.
+        try:
+            answer = generator.generate(request.query, rows, route,
+                                        style=request.style, analogy=analogy)
+        except Exception:
+            # A generation backend that fails must not discard retrieval that
+            # succeeded. The contract already allows answer=null when no backend
+            # is installed; a backend that errored is the same situation from the
+            # caller's side, and the sources are still worth returning. Raising
+            # here turned a working 200 with five correct citations into a 500.
+            logger.exception("generation failed; returning sources only")
+            answer = None
+
+    # The answer is checked against the chunks it was actually handed. A
+    # citation to a genuine document that was not in context is still invented:
+    # the model produced a pinpoint it could not have read.
+    if answer is not None:
         report = verify_citations(answer, rows + timeline_rows)
         grounding = Grounding(
             checked=True, citations=report.total,

@@ -36,30 +36,56 @@ SAMPLE_FRACTIONS = (0.15, 0.30, 0.45, 0.60, 0.75, 0.90)
 RE_RUN_TOGETHER = re.compile(r"[a-z][A-Z][a-z]")
 RUN_TOGETHER_LIMIT = 3    # per sampled page, averaged
 
+# Court opinions arrive as plain text from the Caselaw Access Project, not as
+# PDFs, so they have no pages and no text layer to sample. They are still worth
+# auditing: a truncated download is exactly as fatal as a missing text layer and
+# looks identical in the index. Slicing them into notional pages lets the same
+# two measurements run over both kinds without a second set of thresholds.
+TEXT_PAGE_CHARS = 3000
+
+
+def sample_pages(path: Path, samples: int) -> tuple[int, list[str]]:
+    """Return (page count, sampled page texts) for a PDF or a plain-text source.
+
+    Sampling by index matters: extracting all 600 pages of a CBA to look at six
+    of them costs about a minute per document.
+    """
+    def pick(n: int) -> list[int]:
+        return sorted({int(n * f) for f in SAMPLE_FRACTIONS[:samples]} & set(range(n)))
+
+    if path.suffix.lower() == ".pdf":
+        import pdfplumber
+
+        from src.parser.extract import X_TOLERANCE
+        with pdfplumber.open(path) as doc:
+            n = len(doc.pages)
+            return n, [
+                (doc.pages[i].extract_text(x_tolerance=X_TOLERANCE) or "").strip()
+                for i in pick(n)
+            ]
+
+    body = path.read_text(encoding="utf-8", errors="replace")
+    pages = [body[i:i + TEXT_PAGE_CHARS]
+             for i in range(0, max(len(body), 1), TEXT_PAGE_CHARS)]
+    return len(pages), [pages[i].strip() for i in pick(len(pages))]
+
 
 def audit(manifest_path: Path, data_dir: Path, samples: int) -> int:
-    import pdfplumber
-
-    from src.parser.extract import X_TOLERANCE
-
     entries = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))["documents"]
     print(f"{'DOCUMENT':<38}{'PAGES':>6}{'CHARS/PG':>9}{'FUSED/PG':>9}  VERDICT")
     print("-" * 78)
 
     needs_ocr, mangled, missing, total_pages = [], [], [], 0
     for entry in entries:
-        pdf = data_dir / entry["file"]
+        source = data_dir / entry["file"]
         name = entry["doc_name"]
-        if not pdf.exists():
+        if not source.exists():
             missing.append(name)
             print(f"{name:<40}{'-':>7}{'-':>10}  MISSING")
             continue
-        with pdfplumber.open(pdf) as doc:
-            n = len(doc.pages)
-            total_pages += n
-            idx = sorted({int(n * f) for f in SAMPLE_FRACTIONS[:samples]} & set(range(n)))
-            texts = [(doc.pages[i].extract_text(x_tolerance=X_TOLERANCE) or "").strip()
-                     for i in idx]
+        is_pdf = source.suffix.lower() == ".pdf"
+        n, texts = sample_pages(source, samples)
+        total_pages += n
         counts = [len(t) for t in texts]
         fused = [len(RE_RUN_TOGETHER.findall(t)) for t in texts]
         median = statistics.median(counts) if counts else 0
@@ -71,8 +97,11 @@ def audit(manifest_path: Path, data_dir: Path, samples: int) -> int:
             needs_ocr.append(name)
         elif not ok_fused:
             mangled.append(name)
+        # "NEEDS OCR" is only meaningful for a PDF. A short text file is not a
+        # scanning problem, it is a truncated or failed download.
+        thin = "NEEDS OCR" if is_pdf else "TEXT TRUNCATED - refetch"
         verdict = ("text layer OK" if ok_text and ok_fused
-                   else "NEEDS OCR" if not ok_text
+                   else thin if not ok_text
                    else "WORDS FUSED - tune X_TOLERANCE")
         print(f"{name:<38}{n:>6}{median:>9.0f}{median_fused:>9.0f}  {verdict}")
 
@@ -82,7 +111,7 @@ def audit(manifest_path: Path, data_dir: Path, samples: int) -> int:
         print(f"{len(missing)} missing -- run scripts/fetch_corpus.py: "
               f"{', '.join(missing)}")
     if needs_ocr:
-        print(f"\n{len(needs_ocr)} document(s) have no usable text layer: "
+        print(f"\n{len(needs_ocr)} document(s) carry no usable text: "
               f"{', '.join(needs_ocr)}")
         print("An OCR ingestion path is now justified (BUILD_SEQUENCE.md Step 3).")
         return 1

@@ -22,14 +22,15 @@ build, query, or evaluate.
 
 | Layer | State |
 | --- | --- |
-| Text extraction (19 PDFs + 7 opinions, 3,412 pages) | working |
+| Text extraction (18 PDFs + 7 opinions, 3,385 pages) | working |
 | Structure-aware chunking with article/section citations | working |
 | Embeddings + `sqlite-vec` index | working |
 | Temporal routing | working, 15/15 on the routing eval |
 | Era-isolated retrieval | working, anti-bleed regression tests pass |
 | FastAPI service (`/query`, `/health`) | working |
 | Pre-1995 coverage (opinions + curated timeline) | working, 1946 onward |
-| Generation (local GGUF / optional cloud) | wired, backend not yet installed |
+| Generation (Ollama, local GGUF, or optional cloud) | working |
+| Web interface at `/` | working |
 
 ## Quick start
 
@@ -39,7 +40,7 @@ pip install -r requirements.txt
 
 python scripts/fetch_corpus.py      # what to download, and from where
 python scripts/fetch_corpus.py --check-urls   # do the sources still serve it?
-python scripts/audit_corpus.py      # confirm every PDF has a text layer
+python scripts/audit_corpus.py      # confirm every source carries usable text
 python scripts/build_index.py       # compile the local index (slow; see below)
 python scripts/seed_concepts.py     # historical analogies for casual mode
 

@@ -13,7 +13,7 @@ help:
 	@echo "make corpus    report which documents are missing and where to get them"
 	@echo "make opinions  fetch the public-domain court opinions"
 	@echo "make urls      check every source URL still serves its document"
-	@echo "make audit     confirm every PDF has a usable text layer"
+	@echo "make audit     confirm every source carries usable text"
 	@echo "make build     compile the local index (slow: ~2.5-3s/page, CPU-bound)"
 	@echo "make seed      load historical concept analogies"
 	@echo "make lint      ruff"

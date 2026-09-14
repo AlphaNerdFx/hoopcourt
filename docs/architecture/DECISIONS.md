@@ -328,3 +328,98 @@ CBA 2017 contains the same text in roughly thirty times as many chunks. Removing
 it cost 35 chunks and no retrieval quality, and every source URL in the corpus
 now resolves to the right document. The file itself is untouched under `data/`,
 so relisting it is one manifest entry away.
+
+---
+
+## D14, Statistics belong in a table, not the vector index
+
+Statistics were requested as a corpus expansion. They are not one.
+
+"How many rebounds did Rodman average in 1996-97" is a query, not a passage to
+retrieve. Embedding rows of numbers and relying on cosine distance to surface the
+right one produces answers that are confident, plausible and wrong, which is the
+precise failure mode this project was built to prevent. A near-miss in a legal
+passage is still about the right subject; a near-miss in a statistics table is a
+different player.
+
+**Decision.** Statistics get their own path: a `stats` table and generated SQL
+over it. They share `TemporalRouter` (`src/api/router.py`), because a season
+still has to be resolved, and nothing else. They do not enter `vec_chunks`.
+
+A classifier decides documentary versus statistical, and the response says which
+engine answered. A number read from a table and a quotation from the CBA carry
+different kinds of authority, which is the same distinction `source_tier` already
+draws for documents.
+
+**Sourcing follows the existing posture.** `nba_api` is MIT-licensed, but the
+data behind stats.nba.com is not and no bulk-data licence is published. An open
+client does not grant rights to the upstream data, which is the same trap that
+disqualified Scribd for the Uniform Player Contract and Capsheets as a name. The
+user fetches on their own machine; the project redistributes nothing.
+
+---
+
+## D15, The fine-tune may only see public-domain data
+
+The goal is a published, FOSS-licensed model. That single word, published,
+determines the training set.
+
+Weights memorise. A model trained on the corpus and uploaded to Hugging Face
+distributes derived copyrighted text, which is exactly the act D4 rejected when
+it killed the plan to ship a compiled `nba_legal.db` over IPFS. Moving the text
+from a database into a set of weights does not change what is being handed out.
+
+**Decision.** Training data is limited to sources the project may lawfully
+redistribute:
+
+* the seven public-domain court opinions from the Caselaw Access Project,
+* `historical_timeline.yaml`, which is the project's own writing,
+* synthetic question-answer pairs derived from those two.
+
+No CBA, Constitution or rulebook text, at any stage, including in prompts
+captured for training.
+
+**The target is narrow on purpose**: citation discipline. Copy the permitted
+citation verbatim, never invent a pinpoint, refuse when the context is thin. That
+is the measured gap, retrieval scores 100% while citation validity does not, and
+it is a behaviour rather than knowledge, so it can be taught without the model
+needing to have read the agreements.
+
+**Gate.** The adapter ships only if it beats the base model plus the closed-list
+prompt on the same 43 evaluation questions, measured the same way. If it loses,
+the negative result gets published instead. Note also that only `mistral:7b` has
+ever been measured: trying stronger off-the-shelf models is the cheap experiment
+that must precede this expensive one.
+
+---
+
+## D16, Serving infrastructure is sequenced to load, not to ambition
+
+vLLM and llm-d were both requested for the MVP. Both solve concurrency, and the
+MVP has one user.
+
+vLLM's advantage appears at roughly five or more simultaneous requests; below
+that it reserves more GPU memory than Ollama and returns nothing for it. llm-d is
+a CNCF Kubernetes project that disaggregates prefill and decode across
+compute-optimised and memory-optimised *nodes*. On one 8GB laptop GPU there is
+nothing to disaggregate, and adopting it would buy a Kubernetes dependency to
+serve a single person.
+
+**Decision.**
+
+| Stage | Serving | Trigger |
+| --- | --- | --- |
+| now | Ollama | one user |
+| small | vLLM, single GPU | sustained concurrency, roughly 5+ |
+| large | llm-d on Kubernetes | multiple GPUs or nodes |
+
+Ollama is not a compromise being tolerated until something better arrives. It
+already holds the model entirely in VRAM through its own `cuda_v12` runtime, it
+manages eviction so a 7B runs where an in-process load would not fit, and at this
+scale it is the correct tool.
+
+**The real gate is not technical.** Every copyright decision in this project
+rests on users fetching documents and building an index locally, so nothing is
+redistributed. A hosted service inverts that: the project would hold the corpus
+and serve answers derived from it to the public. No serving stack addresses that,
+and it needs a qualified answer before any public endpoint exists.

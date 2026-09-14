@@ -289,10 +289,11 @@ and why Ollama is tried before llama-cpp.
 * The outer `ORDER BY distance ASC LIMIT k` in `search.py` looks redundant.
 * `/query` can return 200 with `answer: null`. That is the no-backend state.
 * Returning zero sources for a 1952 question is correct behaviour.
-* `_NOISE` in `extract.py` is built from separate literals with dashes as
-  `–`/`—`. A find-and-replace over dash characters corrupted that
-  regex into an invalid range **twice**, once after a comment warning about it.
-  A comment is not a guard.
+* `_NOISE` in `extract.py` is assembled from separate string literals with
+  the dashes written as `\u2013` and `\u2014` escapes. A find-and-replace
+  over dash characters corrupted that regex into an invalid range **twice**,
+  the second time after a comment had been added warning about it. A comment
+  is not a guard; the escapes are. Leave no literal dash glyph in that file.
 
 ---
 
@@ -341,6 +342,10 @@ python scripts/fetch_corpus.py --verify       # checksums
 ---
 
 ## 12. Next, in priority order
+
+The live checklist is [`TODO.md`](../../TODO.md) and the scope reasoning is
+[`docs/project/ROADMAP.md`](../project/ROADMAP.md). The summary below is kept
+for orientation; the checklist is authoritative.
 
 1. **Re-measure citation validity.** The current prompt is untested in its exact
    form. Warm the model first (`keep_alive` is 30m) or the first request pays a

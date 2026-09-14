@@ -105,6 +105,18 @@ scripts/        corpus fetch/audit, index build, concept seeding
 tests/eval/     labelled question set and the evaluation runner
 ```
 
+## Scope
+
+The MVP claim is deliberately narrow: an era-aware question answering system over
+NBA governing documents, with verifiable citations, that a person can install and
+use. Statistics, contracts, a fine-tuned model and a hosted service are all
+sequenced after it.
+
+[TODO.md](TODO.md) is the working checklist.
+[docs/project/ROADMAP.md](docs/project/ROADMAP.md) explains the sequence, and
+[docs/architecture/DECISIONS.md](docs/architecture/DECISIONS.md) records why each
+call was made, with the measurement behind it.
+
 ## Licence
 
 MIT, see [LICENSE](LICENSE). Dependencies are deliberately kept to permissive

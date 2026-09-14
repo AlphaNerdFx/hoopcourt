@@ -77,11 +77,16 @@ a hardware fault rather than a race.
 
 ```
 data/*.pdf ──► extract ──► chunk ──► embed ──► index
-               pdfplumber  Section   bge-base  documents
+data/*.txt     pdfplumber  Section   bge-base  documents
                no OCR      boundary  768-dim   document_chunks
                headers     +size cap normalised vec_chunks (doc_id metadata col)
                stripped
 ```
+
+Two kinds of source enter the same path. The 18 PDFs go through `pdfplumber`;
+the 7 court opinions arrive from the Caselaw Access Project as plain text and
+skip extraction. `scripts/audit_corpus.py` measures both, because a truncated
+download and a missing text layer are the same failure once indexed.
 
 `scripts/build_index.py` runs the whole path and is idempotent per document.
 Cost is dominated by embedding on CPU: roughly 2.5-3 s/page, ~1.5 chunks/page.

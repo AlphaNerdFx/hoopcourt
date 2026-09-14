@@ -217,10 +217,11 @@ def main() -> int:
                     default=ROOT / "tests" / "eval" / "questions.yaml")
     ap.add_argument("--category")
     ap.add_argument("--id", action="append", dest="ids", metavar="QUESTION_ID",
-                    help="run only these question ids; repeatable. Generation "
-                         "is deterministic, so re-running the handful of "
-                         "questions a backend restart cost is exact rather "
-                         "than an approximation of the full run.")
+                    help="run only these question ids; repeatable. Useful for "
+                         "re-running what a backend restart cost, but note "
+                         "that an isolated re-run does NOT reproduce the "
+                         "full-run result: generation is not reproducible on "
+                         "this stack even at temperature 0.")
     ap.add_argument("--verbose", action="store_true")
     ap.add_argument("--with-generation", action="store_true",
                     help="also generate answers and verify their citations")

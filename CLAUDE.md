@@ -38,7 +38,18 @@ Hoopcourt is an era-agnostic legal NBA expert RAG engine designed to interpret t
 * **Local LLM**: `Qwen2.5-7B-Instruct` (`Q4_K_M` GGUF via `llama-cpp-python`; CUDA optional, CPU works). Apache-2.0, unlike the Llama 3.1 Community License, which carries acceptable-use restrictions and a 700M-MAU clause incompatible with this project's MIT licence. Llama-3.1-8B remains supported by passing its repo id.
 * **Cloud LLM** *(optional, bring-your-own-key, never required)*: `claude-opus-5` (Anthropic API).
 * **Embeddings**: `BAAI/bge-base-en-v1.5` (768 dimensions, MIT). Chosen over `nomic-embed-text-v1.5`, which requires `trust_remote_code=True`, arbitrary code execution at import, in a project whose security posture is about supply-chain integrity, and needs `search_document:`/`search_query:` task prefixes that were never applied.
-* **Text Extraction**: `pdfplumber` (MIT). **No OCR.** All 18 corpus documents (3,320 pages) are single-column with usable text layers, including `CBA 1995.pdf`, whose scan already carries an Acrobat Paper Capture OCR layer. `scripts/audit_corpus.py` re-checks this and fails loudly if a future document needs OCR.
+* **Text Extraction**: `pdfplumber` (MIT). **No OCR.** All 18 corpus PDFs
+  (3,385 pages) are single-column with usable text layers, including
+  `CBA 1995.pdf`, whose scan already carries an Acrobat Paper Capture OCR layer.
+  `scripts/audit_corpus.py` re-checks this, and also measures fused words per
+  page: a document can have a perfect text layer and still extract unusably.
+  `x_tolerance=1.5`, because the default fused 35% of CBA 2017's chunks into
+  noise that embedded as garbage while every other check stayed green
+  (DECISIONS.md D11).
+* **Pre-1995 sources**: no public CBA text before 1995 appears to survive, so
+  1946-1994 is carried by 7 public-domain court opinions from the Caselaw Access
+  Project plus 21 curated timeline entries. `documents.source_tier`
+  (`primary` / `judicial` / `timeline`) declares what a citation is worth.
 * **Admin UI**: not built. Its purpose was correcting OCR output; with no OCR in the pipeline it would guard an empty queue. `is_verified` remains in the schema as defence-in-depth.
 
 ### 3.1 Supported Hardware Profiles
@@ -111,7 +122,14 @@ CREATE TABLE historical_concept_mapper (
 ## 5. Chronology Engine & Query Routing Logic
 
 The system strictly bounds prompt size and context retrieval:
-1. **Token Limit Gating**: `TokenLimitEnforcer` drops any request $> 1,000$ tokens using `tiktoken` (`cl100k_base`) with HTTP 400.
+1. **Token Limit Gating**: requests over 1,000 tokens are dropped with HTTP 400
+   (`src/api/tokens.py`). **Not `tiktoken`.** `cl100k_base` is OpenAI's BPE and
+   matches neither backend this project ships, so the gate would be enforced
+   against a number 10-30% off from what the model actually sees, sometimes
+   permissively, on a limit whose stated purpose is blocking long adversarial
+   input. The counter matches the configured backend: a deliberately pessimistic
+   character heuristic by default, the local model's own tokenizer or the
+   Anthropic API when `NBA_TOKEN_COUNTER` asks for exactness. See DECISIONS.md D7.
 2. **Dynamic Route Classifier**:
    * **Explicit Year**: Queries containing 4-digit years (e.g., "1972") filter document candidates where `start_season <= 1972 AND end_season >= 1972`.
    * **Transitional Year Boundary**: an ambiguous four-digit year returns
@@ -167,7 +185,16 @@ Every prompt must be wrapped in isolated Llama-3 Instruct message tags (`<|im_st
    * `BACKEND_MODE=local`: 100% offline, zero network egress, zero query logging. User acts as both Data Controller and Processor.
    * `BACKEND_MODE=cloud`: User prompts are ephemeral in-memory only; require explicit UI consent and Zero-Data-Retention (ZDR) third-party API configurations.
 3. **Indirect Prompt Injection Defense**:
-   * Scanned PDFs from court records must pass PaddleOCR coordinate-filtering. All chunks default to `is_verified = 0` and are withheld from the active RAG index until approved via the Streamlit admin panel.
+   * **No OCR stage exists**, so there is no bounding-box confidence to filter on.
+     All 25 corpus documents carry usable text layers, re-checked by
+     `scripts/audit_corpus.py`, which fails loudly if that stops being true.
+     The residual defence is that `vec_chunks` receives only chunks marked
+     `is_verified = 1`, so it *is* the active index: withhold-until-approved
+     holds by construction rather than by a filter a caller can forget. There is
+     no Streamlit admin panel; with no OCR it would guard an empty queue.
+     The injection risk is also lower than for court-scraped scans, since the
+     corpus comes from official NBPA/NBA publications and public court records.
+     See sec. 3, sec. 8, and DECISIONS.md D3.
 4. **SQL Parameterization**: All database queries must run parameterized bindings. F-strings in SQL execution are strictly banned.
 
 ---
@@ -183,12 +210,13 @@ keeps the CUDA toolchain and the OCR pipeline off the critical path.
 
 ```
 [x] Phase 0: .gitignore before git init (corpus excluded; verified)
-[x] Phase 1: Direct text extraction, 18 docs / 3,320 pages   -> src/parser/
+[x] Phase 1: Direct text extraction, 25 docs / 3,385 pages   -> src/parser/
 [x] Phase 2: Chunking + embeddings + index population        -> src/ingest/
-[x] Phase 3: Labelled eval set (40 questions) + runner       -> tests/eval/
+[x] Phase 3: Labelled eval set (43 questions) + runner       -> tests/eval/
 [x] Phase 4: FastAPI assembly, token gate, temporal router   -> src/api/
-[~] Phase 5: Prompt templates + generator backends (wired; backend not installed)
+[x] Phase 5: Prompt templates + generation via Ollama        -> src/model/
 [x] Phase 6: Fetch-and-build distribution + checksums        -> scripts/
+[x] Phase 7: Pre-1995 coverage, opinions + curated timeline  -> D10-D13
 ```
 
 Superseded from the original sequence:
@@ -197,5 +225,9 @@ Superseded from the original sequence:
 * **Step 8 (IPFS/BitTorrent)**, replaced by fetch-and-build (sec. 7.1).
 * **Step 9 (Streamlit OCR UI)**, cut; with no OCR it guards an empty queue.
 
-Measured status: routing 12/12; anti-bleed regression tests pass; 56 unit tests
-green. Run `python tests/eval/run_eval.py` for the current numbers.
+Measured status: 43/43 on the evaluation with temporal isolation at 100%, the
+gate; 273 unit tests green; index 46 documents / 5,725 chunks / 0 orphaned
+vectors. Generation is separate: citation validity measured at 8/10 on the
+grounded-citation subset, so the retriever is clean and the writer still
+fabricates. Run `python tests/eval/run_eval.py [--with-generation]` for current
+numbers, and read DECISIONS.md before trusting any of them.

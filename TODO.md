@@ -40,8 +40,11 @@ Nothing below this line is required to make that true.
       break the offline mode this project is designed around.
       Building it exposed two concurrency bugs that only appear under load, see
       Known issues below.
-- [ ] **State the citation number honestly in the README**, whatever it is.
-- [ ] **Tag v1.0.0** and write the CHANGELOG section.
+- [x] **State the citation number honestly in the README.** 14-18 of 26 across
+      three runs, with the range, what it measures, and why it fell when
+      retrieval improved.
+- [x] **Tag v1.0.0** and write the CHANGELOG section. Tagged locally; the tag
+      and the release workflow only reach GitHub once a remote exists.
 
 ### Housekeeping before v1.0
 

@@ -9,6 +9,18 @@ is measured, not just the retrieval layer.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-15
+
+First stable release. An era-aware question answering system over NBA governing
+documents, with verifiable citations, that a person can install and use.
+
+Retrieval is 43/43 on the evaluation with temporal isolation at 100%, the gate,
+measured against recall terms deliberately tightened in this release. Generation
+is measured separately and honestly: 14 to 18 of 26 answerable questions across
+three runs, because it is not reproducible even at temperature 0. Both numbers,
+and what they do and do not mean, are in
+[docs/evaluation/GENERATION_MEASUREMENT.md](docs/evaluation/GENERATION_MEASUREMENT.md).
+
 ### Added
 
 - Ollama generation backend, tried before llama-cpp because it needs no compiler
@@ -159,5 +171,6 @@ Defects found in the pre-existing specification, each verified before changing:
 - Extension loading is re-disabled immediately after `sqlite-vec` loads.
 - All SQL values are bound parameters.
 
-[Unreleased]: https://github.com/AlphaNerdFx/hoopcourt/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/AlphaNerdFx/hoopcourt/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/AlphaNerdFx/hoopcourt/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/AlphaNerdFx/hoopcourt/releases/tag/v0.1.0

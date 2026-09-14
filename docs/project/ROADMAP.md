@@ -26,36 +26,35 @@ Everything else in this document happens after that ships.
 
 ## Three things worth arguing about before building them
 
-### Running a service is a different legal act from shipping a tool
+### The project is a tool, not a service (settled)
 
-Every copyright decision this project has taken rests on one posture: the user
-fetches documents themselves and builds their own index, so nothing copyrighted
-is ever redistributed. That posture is why the IPFS distribution plan was killed
-(D4), why the Uniform Player Contract was dropped rather than sourced from a
-viewer page (D12, D13), and why `DATA_SOURCES.md` refuses personal mirrors.
+An earlier version of this roadmap treated a hosted service as the end state and
+flagged it as the largest legal risk in the project. That risk is now gone,
+because the goal changed: Hoopcourt is something people install and run.
 
-A hosted service inverts it. You would hold the corpus, generate answers from it,
-and serve those answers to the public at scale. That is distribution wearing
-different clothes, and the fetch-and-build defence does not reach it.
+The reasoning is worth keeping, because it explains why the decision matters.
+Every copyright position this project holds rests on one posture: the user
+fetches the documents themselves and builds their own index, so nothing
+copyrighted is ever redistributed. That is why the IPFS plan was killed (D4), why
+the Uniform Player Contract was dropped rather than sourced from a viewer page
+(D12, D13), and why `DATA_SOURCES.md` refuses personal mirrors. A hosted service
+would have inverted it: the project holding the corpus and serving derived
+answers to the public at scale. No infrastructure choice fixes that.
 
-This is the largest strategic risk in the roadmap. It is not an infrastructure
-problem, and vLLM does not solve it. Treat it as a gate answered by someone
-qualified before any public endpoint exists, not as a deployment detail.
+As a tool, the posture holds end to end, and the serving stack collapses to
+"whatever runs on the user's own machine", which today is Ollama.
 
-### vLLM and llm-d are concurrency technologies
+### vLLM and llm-d are out of scope, not deferred
 
-vLLM's advantage appears at roughly five or more simultaneous requests. Below
-that it consumes more memory than Ollama and returns nothing for it. llm-d is a
-CNCF Kubernetes project that disaggregates prefill and decode across
-compute-optimised and memory-optimised *nodes*; on a single 8GB laptop GPU there
-is nothing to disaggregate.
+Both exist to serve many simultaneous requests. vLLM's advantage appears at
+roughly five or more concurrent users; below that it reserves more GPU memory
+than Ollama and returns nothing for it. llm-d is a CNCF Kubernetes project that
+splits prefill and decode across separate machines.
 
-Both belong in the roadmap. Neither belongs in the MVP. Adopting them early buys
-a Kubernetes dependency and an architecture with no load to justify it.
-
-Ollama already runs the model entirely in VRAM through its own `cuda_v12`
-runtime, so the current setup is not a compromise being tolerated. It is the
-correct tool at this scale.
+With no service, there are no concurrent users and no cluster, so neither has a
+problem to solve here. Ollama already holds the model entirely in VRAM through
+its own CUDA runtime. It is not a placeholder for something better; at this scale
+it is the right answer.
 
 ### Statistics are not a retrieval problem
 
@@ -112,15 +111,9 @@ from those. No CBA text.
 Ship the adapter only if it beats base plus prompt on the same 43 questions. If
 it loses, publish the negative result.
 
-### D. Service
+### D. Dropped
 
-| Stage | Serving | Trigger |
-| --- | --- | --- |
-| now | Ollama | one user, already GPU-resident |
-| small | vLLM, single GPU | sustained concurrency, roughly 5+ |
-| large | llm-d on Kubernetes | multiple GPUs or nodes |
-
-Gated on the legal question above, not on readiness of the infrastructure.
+Hoopcourt is a tool, not a service. vLLM and llm-d leave the roadmap with it.
 
 ### E. Contracts and cap, blocked
 
@@ -140,6 +133,6 @@ Blocked pending a licensable feed. Do not scrape. If the feature is redefined as
   from necessity to supplement.
 * An official or licensable statistics feed would move Phase B from
   fetch-and-build to something distributable.
-* A qualified legal opinion permitting hosted serving would unblock Phase D
-  early; one forbidding it would remove the service goal entirely and make the
-  self-hosted tool the whole product.
+* A decision to revisit hosting would reopen Phase D and, with it, the
+  copyright question that made it risky. The self-hosted tool is now the whole
+  product by choice, not by constraint.

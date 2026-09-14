@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hoopcourt</title>
+<style>
+:root {
+  --bg: #fbfaf8; --fg: #1a1a1a; --muted: #6b6b6b; --line: #e2e0dc;
+  --card: #ffffff; --accent: #8a3324; --ok: #2d6a4f; --warn: #9a6700;
+  --bad: #a4251f; --code: #f4f2ee;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17181a; --fg: #e8e6e3; --muted: #9a9894; --line: #2e3033;
+    --card: #1e2022; --accent: #d98b6a; --ok: #6fbf9a; --warn: #d9a441;
+    --bad: #e0776f; --code: #232628;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 0 16px; background: var(--bg); color: var(--fg);
+  font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap { max-width: 780px; margin: 0 auto; padding-block: 40px 80px; }
+header { margin-bottom: 28px; }
+h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.02em; }
+.tag { color: var(--muted); font-size: 14px; margin: 0; }
+form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+textarea {
+  width: 100%; min-height: 76px; resize: vertical; padding: 11px 13px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+  color: var(--fg); font: inherit;
+}
+textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+select, button {
+  padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); color: var(--fg); font: inherit; cursor: pointer;
+}
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button:disabled { opacity: .55; cursor: default; }
+.hint { color: var(--muted); font-size: 13px; }
+section { margin-top: 22px; }
+h2 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); margin: 0 0 10px; font-weight: 600;
+}
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 16px; margin-bottom: 10px;
+}
+.answer { white-space: pre-wrap; }
+.meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.pill {
+  font-size: 12px; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--muted); background: var(--card);
+}
+.pill.era { border-color: var(--accent); color: var(--accent); }
+.pill.ok { border-color: var(--ok); color: var(--ok); }
+.pill.warn { border-color: var(--warn); color: var(--warn); }
+.pill.bad { border-color: var(--bad); color: var(--bad); }
+.cite { font-size: 13px; color: var(--accent); font-weight: 600; margin-bottom: 6px; }
+.excerpt { font-size: 14px; color: var(--muted); white-space: pre-wrap; }
+.dist { float: right; font-size: 11px; color: var(--muted); font-weight: 400; }
+.notice { border-left: 3px solid var(--warn); padding-left: 13px; }
+.notice.bad { border-left-color: var(--bad); }
+.choices { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+footer { margin-top: 46px; color: var(--muted); font-size: 13px; }
+a { color: var(--accent); }
+.spin { display: inline-block; animation: p 1.2s ease-in-out infinite; }
+@keyframes p { 0%,100% { opacity: .35 } 50% { opacity: 1 } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Hoopcourt</h1>
+  <p class="tag">Every NBA rule, as it stood.</p>
+</header>
+
+<form id="f">
+  <textarea id="q" placeholder="What was the reserve clause and how did the Oscar Robertson suit end it?" autofocus></textarea>
+  <div class="row">
+    <select id="style">
+      <option value="scholar">Legal scholar</option>
+      <option value="casual">Casual fan</option>
+    </select>
+    <button class="primary" id="go" type="submit">Ask</button>
+    <span class="hint" id="hint"></span>
+  </div>
+</form>
+
+<div id="out"></div>
+
+<footer>
+  Answers are drawn only from documents covering the season the question is about.
+  Citations are checked against the passages the model was given.
+  <span id="health"></span>
+</footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x !== undefined) n.textContent = x; return n; };
+const TIER = { primary: "governing document", judicial: "court opinion", timeline: "curated entry" };
+
+fetch("/health").then(r => r.json()).then(h => {
+  const i = h.index || {};
+  $("#health").textContent =
+    ` Index: ${i.documents} documents, ${i.chunks} passages.` +
+    (h.generator ? ` Model: ${h.generator}.` : " No generation backend; sources only.");
+}).catch(() => {});
+
+$("#f").addEventListener("submit", e => { e.preventDefault(); ask(); });
+
+async function ask(clarified) {
+  const q = $("#q").value.trim();
+  if (!q) return;
+  $("#go").disabled = true;
+  $("#hint").innerHTML = '<span class="spin">thinking, a cold model can take a few minutes</span>';
+  $("#out").innerHTML = "";
+  const body = { query: q, style: $("#style").value };
+  if (clarified) body.clarified_season = clarified;
+  try {
+    const r = await fetch("/query", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (r.status === 409) return renderAmbiguous(d);
+    if (r.status === 400) return renderError(d.detail);
+    if (!r.ok) return renderError({ message: "Request failed: " + r.status });
+    render(d);
+  } catch (err) {
+    renderError({ message: String(err) });
+  } finally {
+    $("#go").disabled = false;
+    $("#hint").textContent = "";
+  }
+}
+
+function renderAmbiguous(d) {
+  const c = el("div", "card notice");
+  c.appendChild(el("strong", null, "Which season did you mean?"));
+  c.appendChild(el("p", "excerpt", d.message));
+  const box = el("div", "choices");
+  (d.options || []).forEach(o => {
+    const b = el("button", null, o);
+    b.type = "button";
+    b.onclick = () => ask(o);
+    box.appendChild(b);
+  });
+  c.appendChild(box);
+  $("#out").appendChild(c);
+}
+
+function renderError(detail) {
+  const c = el("div", "card notice bad");
+  c.appendChild(el("strong", null, detail.error === "prompt_too_long" ? "Question too long" : "Something went wrong"));
+  c.appendChild(el("p", "excerpt", detail.message || ""));
+  $("#out").appendChild(c);
+}
+
+function render(d) {
+  const out = $("#out");
+  const meta = el("div", "meta");
+  if (d.target_year != null) {
+    meta.appendChild(el("span", "pill era", `${d.target_year}-${String(d.target_year + 1).slice(2)} season`));
+  }
+  if (d.trigger_keyword) meta.appendChild(el("span", "pill", `matched "${d.trigger_keyword}"`));
+  meta.appendChild(el("span", "pill", d.route_action.replace(/_/g, " ")));
+  const g = d.grounding || {};
+  if (g.checked) {
+    // uncited_claim is its own failure: the answer asserted things and cited
+    // nothing at all. Showing it as "0/0 verified" would read like success.
+    let label, tone;
+    if (g.uncited_claim) { label = "no citations given"; tone = "bad"; }
+    else if (!g.trustworthy) { label = `${g.fabricated.length} unverified citation${g.fabricated.length === 1 ? "" : "s"}`; tone = "bad"; }
+    else { label = `${g.supported}/${g.citations} citations verified`; tone = "ok"; }
+    meta.appendChild(el("span", "pill " + tone, label));
+  }
+  out.appendChild(meta);
+
+  const cov = d.coverage || {};
+  if (!cov.covered) {
+    const c = el("div", "card notice");
+    c.appendChild(el("strong", null, "Nothing covers that season"));
+    c.appendChild(el("p", "excerpt", cov.message || ""));
+    out.appendChild(c);
+  }
+
+  if (d.answer) {
+    const s = el("section");
+    s.appendChild(el("h2", null, "Answer"));
+    s.appendChild(el("div", "card answer", d.answer));
+    if (g.checked && g.uncited_claim) {
+      const w = el("div", "card notice bad");
+      w.appendChild(el("strong", null, "This answer cites nothing"));
+      w.appendChild(el("p", "excerpt",
+        "The model made claims without pointing at any passage. Everything here is "
+        + "unverified, even if it happens to be correct. Check it against the sources below."));
+      s.appendChild(w);
+    } else if (g.checked && !g.trustworthy && g.fabricated.length) {
+      const w = el("div", "card notice bad");
+      w.appendChild(el("strong", null, "Some citations could not be verified"));
+      w.appendChild(el("p", "excerpt",
+        "These appear in the answer but were not among the passages the model was given, so treat them as unreliable:\n" +
+        g.fabricated.map(x => "  " + x).join("\n")));
+      s.appendChild(w);
+    }
+    out.appendChild(s);
+  } else if (d.sources.length) {
+    const s = el("section");
+    s.appendChild(el("h2", null, "No generation backend"));
+    s.appendChild(el("div", "card excerpt",
+      "Sources were retrieved but no model is installed to write an answer. The passages below are what a model would have been given."));
+    out.appendChild(s);
+  }
+
+  if (d.sources.length) out.appendChild(sourceList("Sources", d.sources));
+  if (d.timeline && d.timeline.length) out.appendChild(sourceList("When this changed", d.timeline));
+
+  if (!d.sources.length && !(d.timeline || []).length && cov.covered) {
+    out.appendChild(el("div", "card excerpt", "Nothing in the index matched this question closely enough to answer it."));
+  }
+}
+
+function sourceList(title, items) {
+  const s = el("section");
+  s.appendChild(el("h2", null, title));
+  items.forEach(x => {
+    const c = el("div", "card");
+    const h = el("div", "cite", x.citation);
+    const dist = el("span", "dist", (1 - x.distance).toFixed(2) + " match");
+    h.appendChild(dist);
+    c.appendChild(h);
+    c.appendChild(el("span", "pill", TIER[x.source_tier] || x.source_tier));
+    c.appendChild(el("p", "excerpt", x.excerpt));
+    s.appendChild(c);
+  });
+  return s;
+}
+</script>
+</body>
+</html>

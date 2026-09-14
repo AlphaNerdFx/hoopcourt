@@ -12,10 +12,11 @@ from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.api.router import MAX_PROMPT_TOKENS, TemporalRouter
@@ -35,6 +36,7 @@ from src.model.generation import build_generator, lookup_concept_analogy
 from src.model.prompt_templates import format_citation
 from src.model.verify import verify_citations
 
+STATIC_DIR = Path(__file__).parent / "static"
 DB_PATH = os.environ.get("NBA_LEGAL_DB", "nba_legal.db")
 BACKEND_MODE = os.environ.get("BACKEND_MODE", "local")
 
@@ -46,6 +48,11 @@ async def lifespan(app: FastAPI):
     # Loaded once: the embedding model costs seconds to load and the token
     # gate must not pay that per request.
     state["embedder"] = Embedder()
+    # Load the embedding model before serving. Deferring it to the first request
+    # made a user pay several seconds and, under concurrent first-requests, raced
+    # the lazy initialiser into a meta-tensor error. Startup is the right place
+    # for a cost that every request depends on.
+    state["embedder"].warm()
     # NBA_TOKEN_COUNTER=local|cloud opts into exact counting; see tokens.py.
     state["counter"] = build_counter("cloud" if BACKEND_MODE == "cloud" else "auto")
     # None when no backend is installed. The API still serves cited sources --
@@ -289,3 +296,15 @@ def query(request: QueryRequest, conn=Depends(get_conn)):
         # correct outcome, not a degraded one (CLAUDE.md sec.2.2).
         grounded=bool(sources),
     )
+
+
+@app.get("/", include_in_schema=False)
+def index() -> FileResponse:
+    """The single-page UI.
+
+    Served from the API itself rather than a separate front end: this is a tool
+    people install, and requiring a second process, a build step or a package
+    manager to see its own output would be a worse product for no gain. No
+    dependencies, no bundler, one file.
+    """
+    return FileResponse(STATIC_DIR / "index.html")

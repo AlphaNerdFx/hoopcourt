@@ -22,7 +22,17 @@ class VectorEngineUnavailable(RuntimeError):
 
 def get_vector_db_connection(db_path: str | Path = ":memory:") -> sqlite3.Connection:
     """Open a connection with sqlite-vec loaded and foreign keys enforced."""
-    conn = sqlite3.connect(str(db_path))
+    # check_same_thread=False because FastAPI runs sync dependencies in a
+    # threadpool: a connection can be opened on one worker thread and closed on
+    # another when the dependency's cleanup runs, which raises
+    # "SQLite objects created in a thread can only be used in that same thread".
+    # It only appears under concurrency, so a single manual request looks fine.
+    #
+    # This is safe here precisely because connections are never shared: each
+    # request opens its own and closes it (see src/api/main.py:get_conn). The
+    # check exists to catch sharing one connection across threads, which this
+    # code does not do.
+    conn = sqlite3.connect(str(db_path), check_same_thread=False)
 
     if not hasattr(conn, "enable_load_extension"):
         conn.close()

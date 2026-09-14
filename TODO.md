@@ -87,15 +87,18 @@ Only if MVP step 2 shows off-the-shelf models cannot close the gap.
 
 ---
 
-## Phase D: Service
+## Phase D: Dropped, tool not service
 
-- [ ] **Gate: get a qualified answer on whether serving answers derived from
-      copyrighted text to the public is lawful.** Every copyright decision so far
-      rests on users fetching and building locally. A hosted service inverts
-      that, and no amount of infrastructure fixes it.
-- [ ] vLLM, single GPU, when sustained concurrency reaches roughly 5+.
-- [ ] llm-d on Kubernetes only at multiple GPUs or nodes. Not before; there is
-      nothing to disaggregate on one card.
+Decided: Hoopcourt is a tool people install, not a service anyone hosts.
+
+That removes vLLM and llm-d from the roadmap entirely rather than deferring them,
+since both exist to serve concurrent users and there are none. It also removes
+the largest legal risk in the project: serving answers derived from copyrighted
+text to the public would have inverted the fetch-and-build posture that every
+other copyright decision rests on. A tool reading documents the user fetched
+themselves does not.
+
+See DECISIONS.md D17.
 
 ---
 

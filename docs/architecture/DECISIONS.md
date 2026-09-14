@@ -423,3 +423,31 @@ rests on users fetching documents and building an index locally, so nothing is
 redistributed. A hosted service inverts that: the project would hold the corpus
 and serve answers derived from it to the public. No serving stack addresses that,
 and it needs a qualified answer before any public endpoint exists.
+
+---
+
+## D17, Hoopcourt is a tool, not a service
+
+An earlier roadmap ended in a hosted service, with vLLM and llm-d as the serving
+stack. That end state is dropped.
+
+**What it removes.** vLLM and llm-d leave the project entirely rather than being
+deferred: both exist to serve many simultaneous requests, and a tool that runs on
+one person's laptop has one. Ollama, already holding the model in VRAM through
+its own CUDA runtime, is not a placeholder for something better. At this scale it
+is the right answer.
+
+**What it removes that matters more.** Every copyright position here rests on the
+user fetching documents themselves and building their own index, so nothing
+copyrighted is redistributed (D4, D12, D13). A hosted service would have inverted
+that: the project holding the corpus and serving derived answers to the public.
+No serving technology addresses it, and it would have needed a qualified legal
+answer before a single public request. As a tool the posture holds end to end.
+
+**What it changes about the fine-tune.** D15's purpose narrows. It is no longer
+about answer quality at scale for strangers; it is about one person's local
+experience. The public-domain-only training boundary is unaffected, because that
+was never about serving. It was about publishing weights.
+
+**Reversing this** reopens the copyright question in full. It is a product
+decision, not an infrastructure one.

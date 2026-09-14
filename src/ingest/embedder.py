@@ -13,6 +13,7 @@ the two directions are separate methods here instead of one flag.
 """
 from __future__ import annotations
 
+import threading
 from collections.abc import Sequence
 
 MODEL_NAME = "BAAI/bge-base-en-v1.5"
@@ -27,14 +28,36 @@ class Embedder:
         self.model_name = model_name
         self._device = device
         self._model = None
+        self._lock = threading.Lock()
 
     @property
     def model(self):
-        if self._model is None:
-            from sentence_transformers import SentenceTransformer
+        """Load once, thread-safely.
 
-            self._model = SentenceTransformer(self.model_name, device=self._device)
+        The unguarded version raced under concurrency: FastAPI runs sync handlers
+        in a threadpool, so several first-requests passed the `is None` check
+        together and all called SentenceTransformer at once. That surfaces as
+        `NotImplementedError: Cannot copy out of meta tensor`, which reads like a
+        device or memory problem and is neither. Double-checked locking, with the
+        second check inside the lock so later callers do not reload.
+        """
+        if self._model is None:
+            with self._lock:
+                if self._model is None:
+                    from sentence_transformers import SentenceTransformer
+
+                    self._model = SentenceTransformer(
+                        self.model_name, device=self._device)
         return self._model
+
+    def warm(self) -> None:
+        """Force the load now rather than on someone's first query.
+
+        A server should pay this at startup: it takes seconds, it makes a load
+        failure visible immediately instead of as a 500 on a user's request, and
+        it removes the window in which the race above could occur at all.
+        """
+        _ = self.model
 
     def _encode(self, texts: Sequence[str], batch_size: int, show: bool):
         # normalize_embeddings=True makes cosine distance equal to the dot

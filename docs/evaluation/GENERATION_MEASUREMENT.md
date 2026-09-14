@@ -34,17 +34,24 @@ because there is no sampling to seed.
 
 ### The range
 
-Three full runs of `mistral:7b` over all 43 questions, same index, same prompt,
-nothing changed between them:
+Full runs of `mistral:7b` over all 43 questions, same index, same prompt,
+nothing changed between runs within a group:
 
-| run | citations |
-| --- | --- |
-| 1 | 17/26 (65.4%) |
-| 2 | 19/26 (73.1%) |
-| 3 | 18/26 (69.2%) |
+| run | before D18 | after D18 (shipping) |
+| --- | --- | --- |
+| 1 | 17/26 (65.4%) | 18/26 (69.2%) |
+| 2 | 19/26 (73.1%) | 14/26 (53.8%) |
+| 3 | 18/26 (69.2%) | 14/26 (53.8%) |
 
-**17 to 19 out of 26.** Quoting any single one of those as *the* number would be
-picking a sample and calling it a measurement.
+**The shipping figure is 14 to 18 out of 26.** Quoting any single one of those as
+*the* number would be picking a sample and calling it a measurement. Section 9
+explains why the post-fix numbers are lower and why that is not a regression.
+
+One further run scored 13/26 and is **discarded, not reported**: a single-question
+generation pass was started while it was in flight, so two requests shared the
+backend. It also logged a transport error consistent with that. Measurement runs
+need the machine to themselves, and several runs in the left-hand column shared
+it with unrelated analysis work, which is a weakness of that column.
 
 ## 2. What the citation check actually asserts
 
@@ -193,3 +200,59 @@ Any generation figure taken before D18 is therefore a lower bound of uncertain
 tightness, and the comparison between the two models is affected asymmetrically:
 qwen's over-refusal was partly correct behaviour on questions where retrieval had
 failed, and mistral's confidence on those same questions was partly unearned.
+
+---
+
+## 9. Better retrieval lowered the citation score, and that is not a regression
+
+Measured after D18 shipped, and it is the most useful thing in this document.
+
+Three full runs before the retrieval fix and three after, same model, same
+prompt, same questions:
+
+| | before D18 | after D18 |
+| --- | --- | --- |
+| citations | 17, 19, 18 | 18, 14, 14 |
+| fabricated citations | 12 | 12 |
+| answered without citing | 10 | 19 |
+
+**Fabrication did not change. Refusal roughly doubled.** The questions that got
+worse are specific and they are the ones D18 changed most:
+`max-salary-1997`, `max-salary-2013` and `luxury-tax-2001` each went from
+failing 0 runs out of 3 to failing 3 out of 3.
+
+### Why
+
+Before the fix, "what was the maximum annual salary in 2013?" retrieved dated
+worked examples, because the year in the query matched passages mentioning that
+year. Worked examples contain **dollar figures**. The model answered with a
+number and cited the example, and scored as a success.
+
+After the fix it retrieves Article II, Section 7, the provision that actually
+states the rule. That provision contains no dollar figure. It says the maximum
+is "the greater of (x) twenty-five percent (25%) of the Salary Cap in effect at
+the time the Contract is executed, or (y) one hundred five percent (105%) of the
+Salary for the final Season of the player's prior Contract". The corpus never
+states the number the question asks for; it states how to compute it. The model
+declines rather than answering with the formula.
+
+So the earlier, higher score was partly earned by citing **authoritative-looking
+text that was not the governing rule**. A worked example of the 2024-25 apron is
+a real passage of the real CBA, and a citation to it passes every check this
+project has, and it is not the provision that answers the question.
+
+### What follows from it
+
+1. **D18 stays.** Reaching the provision that states the rule is the correct
+   behaviour for this system, and a metric that prefers a dated example over the
+   governing text is measuring the wrong thing.
+2. **The citation metric cannot see relevance.** It verifies that a citation was
+   in the context. It cannot tell the rule from an example of the rule, which is
+   precisely the distinction a legal answer depends on.
+3. **The remaining failure is now a real model limitation**, and a sharper one
+   than before: handed the operative provision, a 7B at Q4 will not answer
+   "35% of the Salary Cap [citation]". Worse retrieval was hiding that behind
+   answers that looked better and were less grounded.
+4. Do not reword these questions to recover the number. They ask something a
+   legal corpus answers with a formula, which is a fair question to ask a legal
+   expert, and the honest response is the formula and its citation.

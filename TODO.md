@@ -17,7 +17,8 @@ Nothing below this line is required to make that true.
 - [x] **Re-measure citation validity over all 43 questions.** Done, and the
       old 8/10 did not generalise: that was the 10-question `grounded_citation`
       category, not the full sample. Over all 26 answerable questions mistral
-      scores 18/26 strict. Retrieval is 100% on every check in every run.
+      scores 14-18/26 strict across three runs. Retrieval is 100% on every
+      check in every run.
       The measurement also showed generation is **not reproducible at
       temperature 0** on this stack, so the figure is a range, not a number.
       See [docs/evaluation/GENERATION_MEASUREMENT.md](docs/evaluation/GENERATION_MEASUREMENT.md).

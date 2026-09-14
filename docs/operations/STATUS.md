@@ -104,7 +104,7 @@ five-question batch run twice scored 4/5 then 3/5. So a single run is a sample.
 Three full runs over all 43 questions, nothing changed between them:
 
 ```
-citations   17/26   19/26   18/26        65% - 73%
+citations   18/26   14/26   14/26        54% - 69%
 ```
 
 Retrieval in the same runs is 100% on every check, every time. That separation

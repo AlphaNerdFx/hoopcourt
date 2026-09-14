@@ -34,7 +34,7 @@ eval      43/43, temporal isolation 100% (the gate)
 
 > **Superseded in part, 2026-09-15.** The 8/10 figure quoted below was the
 > 10-question `grounded_citation` category, not the full sample, and it does not
-> generalise: over all 26 answerable questions mistral scores 17-19 depending on
+> generalise: over all 26 answerable questions mistral scores 14-18 depending on
 > the run. Generation is **not reproducible at temperature 0** on this stack, so
 > any single figure here is a sample. The 43/43 above is now measured against
 > tightened recall terms after a real retrieval defect was found and fixed

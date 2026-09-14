@@ -31,7 +31,7 @@ build, query, or evaluate.
 | Pre-1995 coverage (opinions + curated timeline) | working, 1946 onward |
 | Generation (Ollama, local GGUF, or optional cloud) | working |
 | Web interface at `/` | working |
-| Citation grounding | 17-19 of 26 across three runs, see Limitations |
+| Citation grounding | 14-18 of 26 across three runs, see Limitations |
 
 ## Quick start
 
@@ -117,11 +117,21 @@ Stated plainly, because a system about grounding should be honest about its own.
 Temporal isolation is a hard gate: any leak exits non-zero.
 
 **Generation is the weak half, and its number is a range.** Three full runs of
-`mistral:7b` over the same 26 answerable questions scored 17, 19 and 18. Nothing
-changed between them. Generation is **not reproducible on this stack even at
-temperature 0**: sampling is greedy, but llama.cpp's GPU forward pass is not
+`mistral:7b` over the same 26 answerable questions scored **18, 14 and 14**.
+Nothing changed between them. Generation is **not reproducible on this stack even
+at temperature 0**: sampling is greedy, but llama.cpp's GPU forward pass is not
 bitwise stable. Treat any single generation figure, including one you measure
 yourself, as a sample.
+
+**That number went down when retrieval got better, and the reason matters.**
+Before the era-filter fix the same runs scored 17, 19 and 18. Fabrication did not
+change at all; refusal doubled. A question like "what was the maximum annual
+salary in 2013?" used to retrieve dated worked examples containing dollar
+figures, which the model happily answered and cited. It now retrieves the
+provision that states the rule, which contains no dollar figure at all, only
+"the greater of 25% of the Salary Cap or 105% of the prior Salary". The corpus
+does not state that number; it states how to compute it. The higher score was
+partly earned by citing real passages that were not the governing rule.
 
 **What a citation failure usually is.** Classifying every fabricated citation
 against the exact context the model was handed: **one genuinely invented

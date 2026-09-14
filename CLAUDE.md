@@ -245,7 +245,7 @@ recall terms tightened in D18: four checks had been passing on terms appearing i
 
 Generation is measured separately and is **not reproducible even at temperature
 0** (llama.cpp's GPU forward pass is not bitwise stable), so it is reported as a
-range: three full runs of mistral:7b scored 17, 19 and 18 of 26. Classifying
+range: three full runs of mistral:7b scored 18, 14 and 14 of 26. Classifying
 every fabricated citation against the exact context supplied gives **one
 genuinely invented citation per 26 questions**; the rest are a supplied citation
 narrowed to a subsection. The retriever is clean and the writer is over-precise.

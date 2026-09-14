@@ -9,10 +9,13 @@ is measured, not just the retrieval layer.
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-09-15
+## [0.9.0] - 2026-09-15
 
-First stable release. An era-aware question answering system over NBA governing
-documents, with verifiable citations, that a person can install and use.
+Release candidate for 1.0.0, not 1.0.0 itself. Everything listed below is done;
+the reason for the lower number is at the end of this section.
+
+An era-aware question answering system over NBA governing documents, with
+verifiable citations.
 
 Retrieval is 43/43 on the evaluation with temporal isolation at 100%, the gate,
 measured against recall terms deliberately tightened in this release. Generation
@@ -20,6 +23,19 @@ is measured separately and honestly: 14 to 18 of 26 answerable questions across
 three runs, because it is not reproducible even at temperature 0. Both numbers,
 and what they do and do not mean, are in
 [docs/evaluation/GENERATION_MEASUREMENT.md](docs/evaluation/GENERATION_MEASUREMENT.md).
+
+**Why this is not 1.0.0.** It was briefly tagged as such, on the strength of a
+green test suite and a green evaluation, without the application ever being
+launched. Launching it took ten minutes to find three defects, all fixed here:
+`make serve` invoked a console script that does not exist in this virtualenv;
+`/query` returned HTTP 500 when the generation backend hiccuped, discarding
+retrieval that had already succeeded; and the development virtualenv is created
+with `include-system-site-packages`, so fastapi, uvicorn, pdfplumber, yaml and
+torch all resolve from the developer's home directory. The documented install
+has therefore never actually been performed, by anyone, once.
+
+1.0.0 requires a clean-checkout install on a machine that has never built this
+project. A green test suite is not evidence that software runs.
 
 ### Added
 
@@ -171,6 +187,6 @@ Defects found in the pre-existing specification, each verified before changing:
 - Extension loading is re-disabled immediately after `sqlite-vec` loads.
 - All SQL values are bound parameters.
 
-[Unreleased]: https://github.com/AlphaNerdFx/hoopcourt/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/AlphaNerdFx/hoopcourt/compare/v0.1.0...v1.0.0
+[Unreleased]: https://github.com/AlphaNerdFx/hoopcourt/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/AlphaNerdFx/hoopcourt/compare/v0.1.0...v0.9.0
 [0.1.0]: https://github.com/AlphaNerdFx/hoopcourt/releases/tag/v0.1.0

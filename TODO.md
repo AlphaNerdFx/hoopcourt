@@ -43,8 +43,20 @@ Nothing below this line is required to make that true.
 - [x] **State the citation number honestly in the README.** 14-18 of 26 across
       three runs, with the range, what it measures, and why it fell when
       retrieval improved.
-- [x] **Tag v1.0.0** and write the CHANGELOG section. Tagged locally; the tag
-      and the release workflow only reach GitHub once a remote exists.
+- [x] Write the release CHANGELOG section. Tagged **v0.9.0**, not v1.0.0.
+- [ ] **What 1.0.0 actually requires: a clean-checkout install.** v1.0.0 was
+      briefly tagged on a green test suite and a green eval, without the
+      application ever being launched. Launching it found three defects in ten
+      minutes (`make serve` broken, `/query` 500 on a backend hiccup, and a
+      virtualenv that resolves most dependencies from `~/.local`). Before 1.0.0:
+      - [ ] Create a virtualenv **without** system site packages, `pip install
+            -r requirements.txt`, and confirm every entry point runs from it.
+      - [ ] Follow README Quick start start to finish on a machine that has
+            never built this, as a person who is not its author.
+      - [ ] Launch the server and exercise every response shape by hand: a
+            normal answer, a 409 ambiguous year, an uncovered era, a refusal,
+            and a backend that is switched off mid-session.
+      - [ ] Only then tag 1.0.0.
 
 ### Housekeeping before v1.0
 

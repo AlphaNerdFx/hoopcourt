@@ -31,6 +31,7 @@ build, query, or evaluate.
 | Pre-1995 coverage (opinions + curated timeline) | working, 1946 onward |
 | Generation (Ollama, local GGUF, or optional cloud) | working |
 | Web interface at `/` | working |
+| Citation grounding | 17-19 of 26 across three runs, see Limitations |
 
 ## Quick start
 
@@ -106,6 +107,42 @@ leak.
 Refusal cases matter as much as the rest. Asked about 1952, an era no document
 in the corpus covers, the correct behaviour is to return nothing, not the
 nearest plausible text.
+
+## Limitations
+
+Stated plainly, because a system about grounding should be honest about its own.
+
+**Retrieval is the strong half.** Routing, era isolation, recall and refusal are
+43/43 across the evaluation, exactly reproducible, and measured without an LLM.
+Temporal isolation is a hard gate: any leak exits non-zero.
+
+**Generation is the weak half, and its number is a range.** Three full runs of
+`mistral:7b` over the same 26 answerable questions scored 17, 19 and 18. Nothing
+changed between them. Generation is **not reproducible on this stack even at
+temperature 0**: sampling is greedy, but llama.cpp's GPU forward pass is not
+bitwise stable. Treat any single generation figure, including one you measure
+yourself, as a sample.
+
+**What a citation failure usually is.** Classifying every fabricated citation
+against the exact context the model was handed: **one genuinely invented
+citation per 26 questions**. The rest are a supplied citation made finer, `p. 57`
+written as `p. 57 (a)`. That is over-precision, not invented law, and the answer
+still rests on a passage the system actually retrieved. The prompt already
+forbids it and gives that exact counterexample; a 7B at Q4 does it anyway.
+
+**The citation check verifies provenance, not relevance.** It asks whether a
+citation was in the context, never whether the cited passage supports the claim.
+An answer can cite perfectly and be wrong about what the provision says.
+
+**The evaluation does not measure ranking within a document.** It measures which
+documents were reached and whether an expected term appeared. Four recall checks
+were once passing on terms present in half to nearly all of the expected
+document, which hid a real retrieval defect for some time. If you add questions,
+check the corpus frequency of every term you accept.
+
+Every claim here is reproducible: `python tests/eval/run_eval.py --db nba_legal.db
+[--with-generation]`. Details and the full breakdown are in
+[docs/evaluation/GENERATION_MEASUREMENT.md](docs/evaluation/GENERATION_MEASUREMENT.md).
 
 ## Layout
 

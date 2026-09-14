@@ -25,9 +25,33 @@ is measured, not just the retrieval layer.
 - `.env.example` documenting all eight configuration variables at their defaults.
 - Explicit closed list of permitted citations in the prompt, which raised
   citation validity from 7/10 to 8/10 and removed every invented pinpoint.
+- Single-page web UI served by the API at `/`. No build step, no CDN and no
+  package manager: a tool people install should not need npm to display its own
+  output, and a CDN would break the offline mode this project is designed for.
+  It renders source tiers, the timeline channel, the coverage block and the
+  grounding result, and distinguishes a fabricated citation from an uncited
+  claim, which are different failures.
+- Tests covering the API-to-page field contract, including a `node --check`
+  parse of the inline script. String assertions pass over JavaScript that does
+  not parse; the page then serves fine and every button does nothing.
+- Tests for `scripts/audit_corpus.py`, which had none.
 
 ### Fixed
 
+- The corpus audit crashed on every court opinion. Phase 7 added 7 plain-text
+  opinions to a manifest the audit read with `pdfplumber`, so the guard named in
+  CLAUDE.md and TODO.md raised `PdfminerException` on every run from the moment
+  pre-1995 coverage shipped. Text sources are now measured the same way, and a
+  truncated download fails the audit as loudly as a missing text layer.
+- Two concurrency defects that only appear under a real client. SQLite
+  connections are opened with `check_same_thread=False`, because FastAPI runs
+  sync dependencies in a threadpool and a connection can be closed on a
+  different worker thread than it was opened on. The embedder's lazy load is
+  guarded by double-checked locking, because two simultaneous first requests
+  otherwise load the model twice on a machine with room for one.
+- The timeline fallback widened backwards in time. A question about a season
+  later than any timeline entry should reach for the nearest entry; a question
+  about an earlier one must not, or a 1985 entry answers a 1975 question.
 - Ollama timeout raised to 900s with a 30m keep_alive. A cold 7B load takes
   140-190s, and the previous 300s ceiling killed requests mid-load.
 - A generation failure is now recorded against its question rather than aborting

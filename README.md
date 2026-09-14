@@ -44,7 +44,7 @@ python scripts/build_index.py       # compile the local index (slow; see below)
 python scripts/seed_concepts.py     # historical analogies for casual mode
 
 python tests/eval/run_eval.py       # routing + anti-bleed measurement
-uvicorn src.api.main:app --reload   # http://127.0.0.1:8000/docs
+uvicorn src.api.main:app --reload   # http://127.0.0.1:8000
 ```
 
 The corpus is not in this repository and never will be, see
@@ -55,6 +55,19 @@ and checksums, not content.
 Building the index is CPU-bound on embedding: roughly **2.5-3 seconds per page**,
 so the full 3,412-page corpus takes a couple of hours. It is a one-time cost, and
 `--only "<doc name>"` rebuilds a single document.
+
+## Using it
+
+Open `http://127.0.0.1:8000` for the web interface, or `POST /query` for the API
+(`/docs` has the schema). The page shows the season your question resolved to,
+the passages it drew on with their source tier, when the rule changed, and
+whether every citation in the answer was one the model was actually given.
+
+Some questions get a question back. Asking about "2011" returns both options,
+because the 2010-11 season is governed by one agreement and 2011-12 by another,
+and guessing would produce a confident wrong answer. Asking about a season no
+document covers returns nothing and says so, which is the correct outcome rather
+than a failure.
 
 ## How the era isolation works
 

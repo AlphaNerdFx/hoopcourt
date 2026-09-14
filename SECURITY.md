@@ -77,18 +77,6 @@ If you discover a security vulnerability in this project, do not open a public G
    the repository's **Security -> Report a vulnerability** tab. This keeps the
    report private until a fix ships and requires no key exchange.
 
-> **Maintainer note, resolve before making this repository public.** The
-> previous version of this section listed `security@courtroom-to-court.org` and
-> GPG key `0xFEEDFACE12345678`. Neither exists: the domain is unregistered and
-> the key id is placeholder text. A disclosure channel that silently goes nowhere
-> is worse than none, because a researcher who uses it believes they have
-> notified you. Either register a real address and publish a real key, or delete
-> this note and rely on the GitHub advisory flow above.
-2. **Include**:
-   * A detailed description of the vulnerability.
-   * Step-by-step instructions (or a proof-of-concept script) to reproduce the exploit.
-   * An assessment of the potential impact (e.g., denial of service, prompt jailbreak, data corruption).
-
 ### Response Timeline
 
 This is a single-maintainer project, so these are best-effort targets rather than

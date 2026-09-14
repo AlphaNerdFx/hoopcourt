@@ -40,11 +40,12 @@ Nothing below this line is required to make that true.
 
 - [ ] Push to GitHub; claim `hoopcourt` on Hugging Face and PyPI (both free).
 - [ ] Push `wiki/` to the separate `.wiki.git` repo, see `wiki/README.md`.
-- [ ] Replace `OWNER/REPO` placeholders if the repo path differs from
-      `AlphaNerdFx/hoopcourt`.
-- [ ] Resolve the `security@` contact in SECURITY.md, or drop it in favour of a
-      GitHub private advisory. A disclosure channel that goes nowhere is worse
-      than none.
+- [x] `OWNER/REPO` placeholders replaced with `AlphaNerdFx/hoopcourt`.
+      Change them if the repo lands elsewhere.
+- [x] Resolved the `security@` contact: dropped in favour of the GitHub private
+      advisory flow. The old address was at an unregistered domain with a
+      placeholder GPG key, so a researcher using it would have believed they had
+      notified someone.
 
 ---
 

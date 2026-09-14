@@ -9,6 +9,9 @@ raising.
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -89,3 +92,24 @@ def test_theme_aware():
 def test_no_horizontal_overflow_at_phone_width():
     assert re.search(r"max-width:\s*\d+px", HTML), "content is width-capped"
     assert "viewport" in HTML
+
+
+def test_inline_javascript_parses():
+    """A syntax error in the page's script is invisible to every other test here:
+    the string assertions all still pass, the server still serves the file, and
+    the browser silently renders a page whose buttons do nothing. Nothing short
+    of a parser catches it, so use one when the machine has one."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node not installed; syntax check is opportunistic")
+
+    match = re.search(r"<script>(.*?)</script>", HTML, re.DOTALL)
+    assert match, "the page has an inline script"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        js = Path(tmp) / "page.js"
+        js.write_text(match.group(1), encoding="utf-8")
+        proc = subprocess.run(
+            [node, "--check", str(js)], capture_output=True, text=True
+        )
+    assert proc.returncode == 0, proc.stderr

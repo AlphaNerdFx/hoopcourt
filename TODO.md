@@ -14,18 +14,24 @@ with verifiable citations, that a person can install and use.**
 
 Nothing below this line is required to make that true.
 
-- [ ] **Re-measure citation validity over all 43 questions.**
-      The current prompt is the 8/10 closed-list version plus an untested
-      anti-sub-paragraph rule; that exact combination has never been run.
-      Warm the model first or the first request pays a 190s cold load.
-      `python tests/eval/run_eval.py --db nba_legal.db --with-generation`
-- [~] **Try other off-the-shelf models before assuming a fine-tune is needed.**
-      `qwen2.5:7b-instruct` (Apache-2.0) pulled and compared against
-      `mistral:7b`. On the 10-question subset both scored 7/10 with **zero
-      overlap in which questions they failed**, which is what independent random
-      failure looks like rather than a real difference. That subset cannot
-      distinguish them. Re-running over all 43 questions for a larger sample
-      before drawing any conclusion.
+- [x] **Re-measure citation validity over all 43 questions.** Done, and the
+      old 8/10 did not generalise: that was the 10-question `grounded_citation`
+      category, not the full sample. Over all 26 answerable questions mistral
+      scores 18/26 strict. Retrieval is 100% on every check in every run.
+      The measurement also showed generation is **not reproducible at
+      temperature 0** on this stack, so the figure is a range, not a number.
+      See [docs/evaluation/GENERATION_MEASUREMENT.md](docs/evaluation/GENERATION_MEASUREMENT.md).
+- [x] **Try other off-the-shelf models before assuming a fine-tune is needed.**
+      `mistral:7b` vs `qwen2.5:7b-instruct` over all 43 questions, paired.
+      McNemar exact p = 0.34: **no detectable difference**, which is what the
+      rule fixed before the run says to conclude rather than picking the higher
+      score. They fail in opposite directions: mistral fabricated 5 citations
+      and left 1 uncited, qwen fabricated 2 and left 8 uncited, declining on
+      questions the corpus demonstrably covers.
+      Classifying every fabrication against the exact context each model was
+      handed: **one genuinely invented citation each across 26 questions**. The
+      rest are a supplied citation narrowed to a subdivision. That is a
+      formatting habit, not hallucinated law, and it does not justify Phase C.
 - [x] **Thin web UI**, single page served by the existing FastAPI app at `/`.
       Renders answer, sources with tier badges, timeline channel, coverage block
       and grounding result. No build step, no CDN, no package manager: a tool
@@ -83,7 +89,11 @@ Statistics are not a retrieval problem. See ROADMAP and DECISIONS D14.
 
 ## Phase C: The fine-tune
 
-Only if MVP step 2 shows off-the-shelf models cannot close the gap.
+**Not currently justified.** MVP step 2 measured one invented citation per 26
+questions for both candidate models; the rest of the strict failure count is
+over-precision. A QLoRA adapter is an expensive answer to a prompt-shaped
+problem. Try the prompt first, measured over repeated runs, and remember the
+earlier attempt made things worse. Everything below stands if that fails.
 
 - [ ] Generate training pairs from **public-domain sources only**: the 7 court
       opinions, your own timeline entries, and synthetic Q&A derived from them.
@@ -131,6 +141,11 @@ commercial products whose data `DATA_SOURCES.md` rules out taking.
       defect once fused 35% of CBA 2017 into noise and the suite still reported
       full marks. Run `audit_corpus.py` after touching any document.
 - [ ] Generation eval is slow: a cold model load is 140-190s. Warm first.
+- [ ] Generation is not reproducible run to run, so a single eval pass is a
+      sample. Repeat before trusting any generation figure. Retrieval is exact.
+- [ ] On WSL2 the guest gets ~7.4GB, not the 16GB in the hardware profile.
+      Ollama then loads weights without mmap and the OOM killer takes
+      llama-server mid-run. Do not run the test suite during an eval.
 
 ## Decided, do not reopen without new evidence
 

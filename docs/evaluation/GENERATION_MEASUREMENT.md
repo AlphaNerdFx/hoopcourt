@@ -32,6 +32,20 @@ because there is no sampling to seed.
 * Any model comparison carries two sources of variance, question sampling and
   run-to-run drift, so a difference has to be large to mean anything at n = 26.
 
+### The range
+
+Three full runs of `mistral:7b` over all 43 questions, same index, same prompt,
+nothing changed between them:
+
+| run | citations |
+| --- | --- |
+| 1 | 17/26 (65.4%) |
+| 2 | 19/26 (73.1%) |
+| 3 | 18/26 (69.2%) |
+
+**17 to 19 out of 26.** Quoting any single one of those as *the* number would be
+picking a sample and calling it a measurement.
+
 ## 2. What the citation check actually asserts
 
 `verify_citations` marks an answer `ok` when it cited at least one thing and
@@ -149,3 +163,33 @@ That leaves four options, in ascending cost:
 Do not silently rewrite the model's citations to make them verifiable. Stripping
 "(a)" would leave the surrounding prose still claiming subsection (a), and would
 hide from the reader what the model actually did. Classify, do not launder.
+
+
+---
+
+## 8. Part of the citation failure was retrieval, not generation
+
+Found after the numbers above were taken, and it changes how to read them.
+
+Both models refused `max-salary-2024`, and the eval scored both as citation
+failures. Checking the context they were handed: five apron and worked-example
+passages, none of which states the Maximum Annual Salary rule. **The models were
+right.** They were asked a question their context could not answer and said so.
+
+The `recall` check had passed anyway, on the term "Salary Cap", which appears in
+49% of the expected document's chunks. Four questions were passing on terms like
+that. Tightening them to discriminative terms exposed a real retrieval defect
+(D18: the query's year was outranking the provision with dated examples of it),
+and fixing that took the suite to 43/43 against the harder terms.
+
+**What this means for the citation figures above.** They were measured before the
+retrieval fix, so some fraction of the failures were the model correctly
+declining to answer from inadequate context, and at least one was a model citing
+a permitted-but-irrelevant passage and scoring as a success. The citation check
+verifies **provenance, not relevance**: it asks whether a citation was in the
+context, never whether the cited passage supports the claim.
+
+Any generation figure taken before D18 is therefore a lower bound of uncertain
+tightness, and the comparison between the two models is affected asymmetrically:
+qwen's over-refusal was partly correct behaviour on questions where retrieval had
+failed, and mistral's confidence on those same questions was partly unearned.

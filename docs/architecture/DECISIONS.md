@@ -451,3 +451,50 @@ was never about serving. It was about publishing weights.
 
 **Reversing this** reopens the copyright question in full. It is a product
 decision, not an infrastructure one.
+
+---
+
+## D18, The embedded query is not the query the user typed
+
+An explicit year in a question is consumed twice by the obvious implementation:
+once by the era filter, which is what it is for, and again by the embedding,
+where it matches any passage that happens to mention that year. The second use
+is not neutral, it is actively harmful, and the reason is structural rather than
+incidental.
+
+A governing document states a rule **once** and then works through **dated
+examples** of it for pages. The 2023 CBA states the Maximum Annual Salary in
+Article II, Section 7, and then discusses the 2024-25 Salary Cap Year in dozens
+of apron, trade and extension examples. Embedding "2024" therefore ranks the
+examples above the rule, reliably, every time.
+
+**Measured.** For "What was the maximum annual salary a player could receive in
+2024?" the top five were a CBA 101 extension worked example, three apron and
+traded-player-exception passages, and a cap-hold passage. Article II Section 7
+did not appear at all. With the year removed from the embedded text and nothing
+else changed, that provision ranks **2nd**.
+
+`src/api/router.retrieval_text` removes years from the text passed to the
+embedder, and only when `route_action` is `strict_season_filter`, meaning the
+era filter has already restricted the candidate documents to that season.
+Nothing about the temporal scope is lost: it has simply moved to the mechanism
+built for it. If a year was never used for routing it may carry meaning of its
+own, so it is left alone.
+
+**Why this went unnoticed.** The evaluation's `recall` check accepts any one of
+several terms. Four questions were passing on a term that appears throughout the
+expected document: `Salary Cap` in 49% of CBA 101's chunks, `Agent` in 95% of
+the agents regulations, `Members` in 60% of the Constitution. A disjunction
+containing one near-universal term cannot fail, so it asserted nothing, and a
+question whose answer was never retrieved still scored as recalled. Those four
+were tightened to discriminative terms (each under 30%, most under 3%), which
+dropped the suite to 41/43 and exposed the defect. With D18 it is 43/43 against
+the harder terms.
+
+This is the blind spot `docs/operations/STATUS.md` had already warned about,
+caught in the act: a green evaluation meant routing was right and nothing bled
+across eras, not that the operative passage was retrieved.
+
+**The general lesson**, which outlives this fix: a retrieval metric built on
+"does any expected term appear" is only as strong as its rarest accepted term.
+Check the corpus frequency of every term before trusting the check that uses it.

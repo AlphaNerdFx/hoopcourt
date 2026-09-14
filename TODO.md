@@ -19,12 +19,20 @@ Nothing below this line is required to make that true.
       anti-sub-paragraph rule; that exact combination has never been run.
       Warm the model first or the first request pays a 190s cold load.
       `python tests/eval/run_eval.py --db nba_legal.db --with-generation`
-- [ ] **Try other off-the-shelf models before assuming a fine-tune is needed.**
-      Only `mistral:7b` has ever been measured. A stronger base may close the
-      citation gap for free. This experiment is cheap and gates an expensive one.
-- [ ] **Thin web UI**, single page served by the existing FastAPI app.
-      Must render: answer, sources with tier badges, timeline channel, coverage
-      block, grounding result. The citation work is invisible without it.
+- [~] **Try other off-the-shelf models before assuming a fine-tune is needed.**
+      `qwen2.5:7b-instruct` (Apache-2.0) pulled and compared against
+      `mistral:7b`. On the 10-question subset both scored 7/10 with **zero
+      overlap in which questions they failed**, which is what independent random
+      failure looks like rather than a real difference. That subset cannot
+      distinguish them. Re-running over all 43 questions for a larger sample
+      before drawing any conclusion.
+- [x] **Thin web UI**, single page served by the existing FastAPI app at `/`.
+      Renders answer, sources with tier badges, timeline channel, coverage block
+      and grounding result. No build step, no CDN, no package manager: a tool
+      people install should not need npm to show its own output, and a CDN would
+      break the offline mode this project is designed around.
+      Building it exposed two concurrency bugs that only appear under load, see
+      Known issues below.
 - [ ] **State the citation number honestly in the README**, whatever it is.
 - [ ] **Tag v1.0.0** and write the CHANGELOG section.
 

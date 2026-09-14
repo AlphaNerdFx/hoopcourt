@@ -25,26 +25,32 @@ POST /query
   +- 3. Season -> document ids       src/db/schema.py
   |     start_season <= y <= end_season, filtered by source_tier
   |
-  +- 4. Two retrieval channels       src/db/search.py
+  +- 4. Query rewrite for embedding  src/api/router.py retrieval_text()
+  |     strips the year the filter already consumed, so a rule is not
+  |     outranked by dated worked examples of itself (D18)
+  |
+  +- 5. Two retrieval channels       src/db/search.py
   |     sources : primary + judicial, era-filtered, top-k
   |     timeline: curated entries, era-filtered, distance-gated
   |     both use: MATCH ? AND k = ? AND doc_id IN (...)  <- metadata column
   |               ORDER BY distance ASC LIMIT k          <- k is PER DOCUMENT
   |
-  +- 5. Coverage                     src/api/main.py
+  +- 6. Coverage                     src/api/main.py
   |     no documents for the era -> covered=false, names the nearest
   |     documents but no match    -> covered=true, reason=no_match
   |
-  +- 6. Generation (optional)        src/model/generation.py
+  +- 7. Generation (optional)        src/model/generation.py
   |     Ollama first, then llama-cpp; absent -> sources only, answer null
   |
-  +- 7. Citation check               src/model/verify.py
+  +- 8. Citation check               src/model/verify.py
         every citation matched against the passages actually supplied
         a real document with an invented pinpoint is still fabrication
 ```
 
-Step 4 is where era isolation happens and it depends on a specific sqlite-vec
-behaviour, see [DECISIONS.md](DECISIONS.md) D2.
+Step 5 is where era isolation happens and it depends on a specific sqlite-vec
+behaviour, see [DECISIONS.md](DECISIONS.md) D2. Step 4 exists because the two
+uses of a year pull against each other: the filter wants it, the embedding is
+misled by it.
 
 ### Why two channels rather than one ranking
 

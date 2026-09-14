@@ -238,24 +238,40 @@ you the text went bad.
 GPU               RTX 4060 Laptop
 Windows driver    576.52          supports CUDA up to 12.9
 Installed torch   2.12.1+cu130    requires driver 580+
-torch.cuda        False
+torch.cuda        False   (PyTorch only; Ollama is unaffected, on GPU)
 RAM               7GB total, ~5GB available
 cores             12
+VRAM              8188 MiB, 6419 in use by the resident model
 ollama            running, mistral:7b (4.4GB) and llama3.2:3b (2.0GB) pulled
 ```
 
-The CUDA message is misleading: the GPU is fine, the wheel is too new for the
-driver. In WSL2 the CUDA driver comes from the Windows host, so nothing inside
-Linux fixes it. Either update the Windows driver to 580+, or install a matching
-build, which is faster and changes nothing else:
+The CUDA message is misleading in two ways, and the second matters more.
+
+The wheel is too new for the driver: `cu130` needs 580+, this machine has
+576.52. In WSL2 the CUDA driver comes from the Windows host, so nothing inside
+Linux fixes it. That part is real, and it affects PyTorch only.
+
+**It does not affect generation.** Ollama bundles its own CUDA runtime and
+selected `cuda_v12`, which matches this driver. `mistral:7b` sits fully resident
+in VRAM (5.5GB of 5.5GB; GPU at 6419 of 8188 MiB). The latency-sensitive path
+has been GPU-accelerated all along. An earlier version of this document said
+everything ran on CPU, which conflated PyTorch with the whole system.
+
+**Decision taken: do not swap the torch wheel.** The only gain is embedding
+during a *full* index rebuild, roughly 80 minutes down to perhaps 20, since
+extraction is CPU-bound regardless and is about a fifth of that time. Against
+it: a 2.5GB download replacing a working install, and VRAM already 78% committed
+to the model you want resident, leaving ~1.7GB for torch to contend over. A 25x
+speedup on a rare, already-completed operation does not justify that risk.
+Adding a single document uses `--only` and takes minutes.
+
+Revisit if full rebuilds become routine, or if embedding moves to a larger
+model. The command, if that day comes:
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cu126
 ```
 
-**This is the open crossroad.** It would take index rebuilds from ~80 minutes to
-a few, and generation from a 190-second cold load to seconds. It is a 2.5GB
-download replacing a working install, so it was left for the owner to approve.
 
 RAM matters too: a 7B at Q4_K_M is 4.4GB of weights against 5GB free, so it will
 not load in-process. Ollama memory-maps and evicts, which is why it works there
@@ -329,13 +345,12 @@ python scripts/fetch_corpus.py --verify       # checksums
 1. **Re-measure citation validity.** The current prompt is untested in its exact
    form. Warm the model first (`keep_alive` is 30m) or the first request pays a
    190-second cold load.
-2. **Decide the CUDA question** (section 8). Everything else is gated on speed.
-3. **Run the full 43-question generation eval.** Only the ten grounded-citation
-   questions have been measured with generation on.
-4. **Upgrade medium-confidence timeline entries.** Eight of 21 rest on the
+2. **Run the full 43-question generation eval.** Only the ten grounded-citation
+   questions have been measured with generation on. Warm the model first.
+3. **Upgrade medium-confidence timeline entries.** Eight of 21 rest on the
    league's published history. Any that a court opinion can support becomes
    checkable inside the corpus.
-5. **Push and claim namespaces.** `hoopcourt` is free on Hugging Face and PyPI.
+4. **Push and claim namespaces.** `hoopcourt` is free on Hugging Face and PyPI.
    `CHANGELOG.md` and the issue templates point at
    `github.com/AlphaNerdFx/hoopcourt`; the wiki in `wiki/` needs pushing to the
    separate `.wiki.git` repo, instructions in `wiki/README.md`.

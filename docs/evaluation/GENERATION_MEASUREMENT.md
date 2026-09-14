@@ -106,11 +106,46 @@ whichever model scored higher.
 Tie-breaks, also fixed in advance: both are Apache-2.0, so licence does not
 separate them; mistral:7b is the smaller download.
 
-**This does not justify starting the fine-tune.** Phase C is gated on
-off-the-shelf models being unable to close the gap, and what these runs show is
-one invented citation per 26 questions plus a formatting habit. That is not a
-knowledge problem, and a QLoRA adapter is an expensive answer to a prompt
-question. Revisit only with a measured attempt at the prompt first, remembering
-that an earlier attempt made it worse: a rule telling the model to cite what it
-claims cut validity from 8/10 to 4/10 by pushing it toward finer invented
-pinpoints, not fewer.
+## 6. The prompt fix has already been tried, and it does not work
+
+Worth stating before anyone proposes prompt engineering as the answer. The
+scholar prompt already contains this rule, verbatim:
+
+> A citation contains nothing but an entry from the permitted list, copied
+> whole. Do not append sub-paragraph detail of your own: if the list says
+> "p. 57", cite "p. 57", never "p. 57 (a)".
+
+Mistral then emitted `2023 NBA CBA, Article II, Section 6, p. 57 (a)`. That is
+the prompt's own counterexample, reproduced character for character, in the
+document the example was written about.
+
+So this is not a gap in the instructions. It is a 7B at Q4_K_M failing to follow
+an explicit, exemplified negative constraint. An earlier attempt to push harder
+made things worse: a rule telling the model to cite what it claims cut validity
+from 8/10 to 4/10 by producing finer invented pinpoints, not fewer.
+
+## 7. Where that leaves the fine-tune
+
+**Phase C is still not the next step, but the reasoning changes.**
+
+The gate is whether off-the-shelf models can close the gap. For the failure that
+CLAUDE.md sec.2.2 actually calls fatal, inventing a citation that was never
+supplied, there is no real gap to close: one case per 26 questions, for both
+models. For the over-precision habit, prompting is exhausted.
+
+That leaves four options, in ascending cost:
+
+1. **Accept and surface it.** The current behaviour. The citation is marked
+   unverified and the UI shows it. Honest, and it ships.
+2. **Classify it accurately rather than calling it fabrication.** The system
+   holds the closed list, so it can tell "narrowed a permitted citation" from
+   "invented a document" and report which. This converts one misleading label
+   into two accurate ones without touching the model. Cheapest real improvement,
+   and it is the one to try next.
+3. **A larger or better instruction-following model**, measured the same way.
+4. **QLoRA on citation discipline.** Expensive, and it targets a habit rather
+   than a knowledge gap.
+
+Do not silently rewrite the model's citations to make them verifiable. Stripping
+"(a)" would leave the surrounding prose still claiming subsection (a), and would
+hide from the reader what the model actually did. Classify, do not launder.

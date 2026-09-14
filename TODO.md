@@ -89,11 +89,23 @@ Statistics are not a retrieval problem. See ROADMAP and DECISIONS D14.
 
 ## Phase C: The fine-tune
 
-**Not currently justified.** MVP step 2 measured one invented citation per 26
+**Not the next step.** MVP step 2 measured one invented citation per 26
 questions for both candidate models; the rest of the strict failure count is
-over-precision. A QLoRA adapter is an expensive answer to a prompt-shaped
-problem. Try the prompt first, measured over repeated runs, and remember the
-earlier attempt made things worse. Everything below stands if that fails.
+over-precision. Prompting is already exhausted for it: the scholar prompt
+forbids appending sub-paragraph detail and gives `p. 57` vs `p. 57 (a)` as the
+example, and mistral emitted `p. 57 (a)` anyway.
+
+Cheaper things to try first, in order:
+
+- [ ] Report a narrowed permitted citation as its own grounding state instead of
+      calling it fabrication. The closed list is already in hand, so the system
+      can distinguish "invented a document" from "added a subsection to a real
+      citation" and say which. Do not rewrite the citation to make it pass, that
+      launders the failure rather than reporting it.
+- [ ] Measure a larger instruction-following model the same way.
+
+Everything below stands if those fail. See
+[docs/evaluation/GENERATION_MEASUREMENT.md](docs/evaluation/GENERATION_MEASUREMENT.md).
 
 - [ ] Generate training pairs from **public-domain sources only**: the 7 court
       opinions, your own timeline entries, and synthetic Q&A derived from them.

@@ -19,7 +19,15 @@ from src.db.schema import EMBEDDING_DIM, initialize_database
 
 
 class StubEmbedder:
-    """Deterministic unit vectors; axis 0 = modern, axis 1 = historical."""
+    """Deterministic unit vectors; axis 0 = modern, axis 1 = historical.
+
+    Implements `warm()` because the real one does: startup calls it to load the
+    model before serving, and a stub that omits part of the interface it stands
+    in for lets a startup change break every test at once.
+    """
+
+    def warm(self) -> None:
+        return None
 
     def embed_query(self, text: str):
         v = [0.0] * EMBEDDING_DIM

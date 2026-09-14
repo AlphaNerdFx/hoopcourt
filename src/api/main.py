@@ -19,7 +19,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.api.router import MAX_PROMPT_TOKENS, TemporalRouter
+from src.api.router import MAX_PROMPT_TOKENS, TemporalRouter, retrieval_text
 from src.api.tokens import build_counter
 from src.db.connection import engine_versions, get_vector_db_connection
 from src.db.schema import (
@@ -224,7 +224,11 @@ def query(request: QueryRequest, conn=Depends(get_conn)):
     # 4. Era-isolated retrieval, in two channels. Authoritative sources answer
     # "what was the rule"; curated timeline entries answer "when did it change"
     # and are kept separate so a summary can never outrank the governing text.
-    embedding = state["embedder"].embed_query(request.query)
+    # Not request.query: an explicit year is already consumed by the era
+    # filter, and leaving it in the embedded text pulls dated worked
+    # examples ahead of the provision that states the rule. See
+    # router.retrieval_text.
+    embedding = state["embedder"].embed_query(retrieval_text(request.query, route))
     rows = retrieve_segmented_context(conn, embedding, route, k=request.k)
     timeline_rows = retrieve_timeline(conn, embedding, route, k=3)
 

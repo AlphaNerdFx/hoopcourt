@@ -29,7 +29,10 @@ questions:
   expect_documents: ["2023 NBA CBA", "NBA Constitution 2024", "2024-25 CBA 101",
                      "NBA Uniform Player Contract", "NBPA Agents Governing Regulations"]
   forbid_documents: ["CBA 2011", "CBA 2017", "CBA 2005", "NBPA CBA 1999", "CBA 1995"]
-  expect_terms_any: ["Maximum Annual Salary", "thirty-five percent", "Salary Cap"]
+  # "Salary Cap" was dropped: it appears in 49% of CBA 101 chunks, so the check
+  # passed on a term that cannot fail. Measured 2026-09-14; both remaining terms
+  # appear in under 1% of the 2023 CBA.
+  expect_terms_any: ["Maximum Annual Salary", "thirty-five percent"]
 
 - id: max-salary-2013
   category: temporal_isolation
@@ -38,7 +41,8 @@ questions:
   expect_year: 2013
   expect_documents: ["CBA 2011", "NBA Constitution 2012"]
   forbid_documents: ["2023 NBA CBA", "CBA 2017", "NBPA CBA 1999", "CBA 1995"]
-  expect_terms_any: ["Maximum Annual Salary", "percent", "Salary Cap"]
+  # Bare "percent" and "Salary Cap" were dropped for the same reason.
+  expect_terms_any: ["Maximum Annual Salary", "thirty percent", "twenty-five percent"]
 
 - id: max-salary-1997
   category: temporal_isolation
@@ -181,7 +185,10 @@ questions:
   expect_documents: ["NBPA Agents Governing Regulations", "2023 NBA CBA",
                      "2024-25 CBA 101", "NBA Uniform Player Contract"]
   forbid_documents: ["CBA 1995", "NBPA CBA 1999", "CBA 2005"]
-  expect_terms_any: ["Agent", "Certification", "Regulations"]
+  # "Agent" is in 95% of this document and "Regulations" in 73%, so every term
+  # was generic and the check asserted nothing. These are the actual
+  # requirements the question asks about.
+  expect_terms_any: ["application", "examination", "fee of"]
 
 - id: draft-lottery-odds
   category: grounded_citation
@@ -243,7 +250,8 @@ questions:
   expect_documents: ["NBA Constitution 2024", "2023 NBA CBA", "2024-25 CBA 101",
                      "NBA Uniform Player Contract", "NBPA Agents Governing Regulations"]
   forbid_documents: ["CBA 1995", "CBA 2011", "NBPA CBA 1999", "NBA Constitution 2019"]
-  expect_terms_any: ["transfer", "Board of Governors", "Members"]
+  # "Members" is in 60% of the Constitution and "Board of Governors" in 36%.
+  expect_terms_any: ["transfer of a Membership", "three-fourths"]
 
 # ------------------------------------------------------------- trigger routing
 - id: trigger-coin-flip-historical

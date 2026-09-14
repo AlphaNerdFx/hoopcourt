@@ -55,6 +55,44 @@ AMBIGUOUS_YEARS = {2023}
 RE_WORD = re.compile(r"[a-z0-9'\-]+")
 RE_YEAR = re.compile(r"\b(19\d{2}|20\d{2})\b")
 
+# Punctuation left stranded once a year is removed, and the preposition that
+# introduced it: "... receive in 2024?" should become "... receive?", not
+# "... receive in ?", which embeds the dangling "in" as content.
+RE_DANGLING_PREP = re.compile(r"\b(?:in|during|for|of|from|since|by)\s*(?=[?.,;:]|$)",
+                              re.IGNORECASE)
+RE_SPACE_BEFORE_PUNCT = re.compile(r"\s+([?.,;:])")
+
+
+def retrieval_text(query: str, route: dict) -> str:
+    """The text to embed, which is not always the text the user typed.
+
+    An explicit year is consumed twice by the naive path: once by the era
+    filter, which is what it is for, and again by the embedding, where it
+    matches any passage that happens to mention that year. The second use is
+    actively harmful, because a governing document states a rule once and then
+    works through dated examples of it.
+
+    Measured on "What was the maximum annual salary a player could receive in
+    2024?": with the year, the top 5 are apron and trade worked examples that
+    mention the 2024-25 Salary Cap Year, and Article II Section 7, the provision
+    that actually states the rule, does not appear at all. With the year
+    removed, that provision ranks 2nd. The era filter has already restricted the
+    candidates to documents governing 2024, so nothing about the temporal scope
+    is lost.
+
+    Only applied when the route actually filtered on a season. If the year was
+    never used for routing, it may carry meaning that belongs in the query.
+    """
+    if route.get("route_action") != "strict_season_filter":
+        return query
+    stripped = RE_YEAR.sub(" ", query)
+    if stripped == query:
+        return query
+    stripped = RE_SPACE_BEFORE_PUNCT.sub(r"\1", RE_DANGLING_PREP.sub("", stripped))
+    stripped = RE_SPACE_BEFORE_PUNCT.sub(r"\1", " ".join(stripped.split()))
+    # A question that was nothing but a year still has to retrieve something.
+    return stripped if len(stripped.split()) >= 3 else query
+
 # Terms whose historical meaning must override the modern default.
 #
 # Most carry a modern sense too, so they only fire near a context cue -- "coin

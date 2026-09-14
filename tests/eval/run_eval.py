@@ -22,7 +22,11 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from src.api.router import TemporalRouter, current_season  # noqa: E402
+from src.api.router import (  # noqa: E402
+    TemporalRouter,
+    current_season,
+    retrieval_text,
+)
 from src.db.connection import get_vector_db_connection  # noqa: E402
 from src.db.schema import ambiguous_seasons  # noqa: E402
 from src.db.search import retrieve_segmented_context  # noqa: E402
@@ -88,7 +92,7 @@ def evaluate(db_path: str, questions: list[dict], verbose: bool,
                              "expect_terms_absent")
         )
         if needs_retrieval:
-            emb = embedder.embed_query(q["question"])
+            emb = embedder.embed_query(retrieval_text(q["question"], route))
             chunks = retrieve_segmented_context(conn, emb, route, k=5)
             got_docs = {c["document"] for c in chunks}
 

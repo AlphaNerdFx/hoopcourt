@@ -17,9 +17,14 @@ _Snapshot; re-generate the numbers with the commands shown._
 | Source-URL checking | `scripts/fetch_corpus.py --check-urls` |
 | Manifest integrity | `tests/test_manifest.py` (44 checks) |
 
-**238 unit tests green in ~6 s** (`make test`) and **43/43 on the evaluation**
-(`make eval`) against the complete 19-document index, with temporal isolation at
+**318 unit tests green in ~23 s** (`make test`) and **43/43 on the evaluation**
+(`make eval`) against the complete 46-document index, with temporal isolation at
 100%, the gate.
+
+Read 43/43 with one caveat: four recall checks were passing on terms that appear
+in half to nearly all of the expected document, so they could not fail. They were
+tightened, which dropped the suite to 41/43 and exposed a real retrieval defect
+(D18). The 43/43 below is measured **after** that fix, against the harder terms.
 
 ```
 CATEGORY                 PASS  TOTAL   RATE
@@ -88,32 +93,38 @@ the rulebook's *"Section II, Starting and Stopping of Shot Clock"* (p. 28).
   the timeline entries are medium confidence, drawn from the league's published
   history rather than from a document in the index.
 
-## Generation is measured, and it fabricates
+## Generation is measured, and the number is a range
 
-A local 7B (mistral:7b via Ollama, Q4_K_M) now answers end to end. Measured over
-the ten grounded-citation questions with `run_eval.py --with-generation`:
+A local 7B (`mistral:7b` via Ollama, Q4_K_M) answers end to end on GPU.
+
+**Generation is not reproducible on this stack even at temperature 0.** Sampling
+is greedy; llama.cpp's GPU forward pass is not bitwise stable. The same
+five-question batch run twice scored 4/5 then 3/5. So a single run is a sample.
+
+Three full runs over all 43 questions, nothing changed between them:
 
 ```
-route              10/10   100%
-no_bleed           10/10   100%
-in_expected_docs   10/10   100%
-recall             10/10   100%
-citations           7/10    70%     <- generation
+citations   17/26   19/26   18/26        65% - 73%
 ```
 
-Retrieval is perfect and the model still invents a citation in roughly three
-answers out of ten: an invented Article and Section in the 2023 CBA, a page that
-was not in context, and once the max-salary provision cited in answer to a draft
-lottery question. Every one of those would read as a correct answer.
+Retrieval in the same runs is 100% on every check, every time. That separation
+is the whole point of measuring them apart: a single end-to-end score would hide
+a clean retriever behind an inconsistent writer.
 
-This is the argument for measuring the two separately. They fail differently and
-they have different fixes, and a single end-to-end score would have hidden a
-perfect retriever behind a fabricating writer.
+**What the citation check asserts.** That every citation in an answer was one the
+model was handed, matched exactly, and that a substantive answer cited
+something. It verifies **provenance, not relevance**, and says nothing about
+whether the answer is factually right.
 
-Two cautions on the number itself. It was 50% before three measurement errors
-were removed from the checker, so treat any citation figure as provisional until
-the false-positive modes have been examined. And it is one model at one
-quantisation on ten questions.
+**Not all failures are equal.** Classifying every fabricated citation against the
+exact context the model was given: **one genuinely invented citation per 26
+questions**, for both candidate models. The rest are a supplied citation made
+finer, `p. 57` written as `p. 57 (a)`. The prompt already forbids this and gives
+that exact counterexample; a 7B at Q4 does it anyway.
+
+See [../evaluation/GENERATION_MEASUREMENT.md](../evaluation/GENERATION_MEASUREMENT.md)
+for the full breakdown, the model comparison, and why it does not justify a
+fine-tune.
 
 ## What the evaluation does not catch
 
@@ -141,9 +152,11 @@ Two consequences:
 
 ## Next
 
-1. Install a local generation backend and re-run the eval with generation on,
-   measuring citation validity separately from retrieval.
-2. Add pre-1995 documents (`DATA_SOURCES.md` → Internet Archive) so the historical
-   triggers have something to retrieve.
-3. Expand the eval set as coverage grows, new documents change which eras exist,
-   which changes what the refusal cases should refuse.
+1. Report a narrowed permitted citation as its own grounding state rather than
+   calling it fabrication. The closed list is already in hand, so the system can
+   distinguish "invented a document" from "added a subsection to a real
+   citation". Do not rewrite the citation to make it pass.
+2. Audit the remaining recall terms the way D18's four were audited. A
+   disjunction is only as strong as its rarest accepted term.
+3. Corpus expansion (officiating, league history), which reuses every existing
+   mechanism. See [../../TODO.md](../../TODO.md).

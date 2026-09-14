@@ -53,3 +53,9 @@ Thumbs.db
 
 # Agent workspace scratch
 .workspace/
+
+# Local agent tooling, not project code. `npx skills add` drops third-party
+# skills here; they run with full agent permissions and belong to the machine,
+# not to this repository.
+.agents/
+.claude/

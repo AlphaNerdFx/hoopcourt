@@ -1,0 +1,116 @@
+# Measuring generation: what the citation number means
+
+Retrieval and generation are measured separately because they fail differently.
+This document is about the second. The retrieval numbers need no caveats: they
+are computed without the LLM and are exactly reproducible at 100%.
+
+Measured on 2026-09-14 against the 46-document index, all 43 evaluation
+questions, `mistral:7b` and `qwen2.5:7b-instruct` through Ollama on an RTX 4060.
+
+---
+
+## 1. Generation is not reproducible, even at temperature 0
+
+This was assumed and then tested, and the assumption was wrong.
+
+* `bird-rights` failed for qwen in the full run and passed in three isolated
+  re-runs of the same question.
+* The same five-question batch, same order, same model, run twice: 4/5 then 3/5.
+
+`options.temperature` is 0.0, so sampling is greedy and nothing is being drawn
+from a distribution. The variation is in the forward pass: llama.cpp on a GPU
+backend is not bitwise reproducible across runs, and a seed does not help
+because there is no sampling to seed.
+
+**Consequences.**
+
+* A single run is a sample, not a measurement. The citation figure is reported
+  as a range across repeated full runs.
+* An isolated `--id` re-run does **not** reproduce that question's full-run
+  result. `--id` is for repairing what a backend restart cost, not for
+  recomputing a score.
+* Any model comparison carries two sources of variance, question sampling and
+  run-to-run drift, so a difference has to be large to mean anything at n = 26.
+
+## 2. What the citation check actually asserts
+
+`verify_citations` marks an answer `ok` when it cited at least one thing and
+fabricated nothing. Per answer, binary, strict. Matching is exact against the
+citations the model was handed, never by substring, because a substring test
+accepts a real document carrying an invented pinpoint, which is the exact
+failure the check exists to catch.
+
+It does **not** measure whether the answer is factually right. An answer can
+cite perfectly and still be wrong about what the provision says.
+
+Two questions are excluded from the check by construction: those where retrieval
+correctly returns nothing, since there is no context to cite.
+
+## 3. Not all fabrications are the same failure
+
+The strict count conflates three things with very different severity. Every
+fabricated citation from both models was classified by rebuilding the exact
+context the model was handed, which retrieval makes reproducible.
+
+| Kind | mistral | qwen | What it means |
+| --- | --- | --- | --- |
+| Invented: base citation never supplied | 1 | 1 | The fatal case. CLAUDE.md sec.2.2. |
+| Narrowed: supplied citation plus a subdivision present in the chunk | 6 | 2 | Grounded at page level, unverified below it |
+| Narrowed: subdivision not found in the chunk | 1 | 0 | Closer to invention |
+| Not a citation at all (`implied from context`) | 1 | 0 | Visible nonsense, not misleading |
+
+**One invented citation each, across 26 answered questions.** The headline
+failure rate is dominated by over-precision, not by hallucinated law:
+
+    handed    2023 NBA CBA, Article II, Section 6, p. 57
+    written   2023 NBA CBA, Article II, Section 6, p. 57 (a)
+
+The strict rule still calls that a fabrication and the rule is not being
+relaxed. A reader following "(a)" expects subsection (a) to support the claim,
+and nothing verified that. Finding the string "(a)" in the chunk is weak
+evidence, since legal text is full of subdivision markers; it establishes the
+citation is not a document-level invention, not that it is correct.
+
+The number is reported strict. The breakdown is reported next to it, because
+"the model invents law" and "the model is too precise about where it read
+something" call for different fixes and only one of them is a reason to
+fine-tune.
+
+## 4. The two models fail in opposite directions
+
+Both scored the same strict total. That tie hides the finding.
+
+| | mistral:7b | qwen2.5:7b-instruct |
+| --- | --- | --- |
+| Fabricated a citation | 5 | 2 |
+| Answered without citing | 1 | 8 |
+
+Qwen declines on questions the corpus demonstrably covers: it answered
+"the context provided does not contain specific information about the maximum
+annual salary a player could receive in 2013" on a question where the `recall`
+check passes against the same retrieved chunks. Mistral over-claims; qwen
+over-refuses.
+
+Neither is obviously better. A fabricated citation is more dangerous because it
+is invisible, and CLAUDE.md sec.2.2 names it a fatal error. An answer that
+refuses when the text is in front of it is safe and useless. The UI already
+renders these as distinct states rather than collapsing both into "failed".
+
+## 5. The comparison verdict
+
+Paired over the same questions, McNemar exact two-sided on the discordant pairs:
+**p = 0.34. No detectable difference.** The decision rule was fixed before the
+results were read, and it says to conclude exactly that rather than crowning
+whichever model scored higher.
+
+Tie-breaks, also fixed in advance: both are Apache-2.0, so licence does not
+separate them; mistral:7b is the smaller download.
+
+**This does not justify starting the fine-tune.** Phase C is gated on
+off-the-shelf models being unable to close the gap, and what these runs show is
+one invented citation per 26 questions plus a formatting habit. That is not a
+knowledge problem, and a QLoRA adapter is an expensive answer to a prompt
+question. Revisit only with a measured attempt at the prompt first, remembering
+that an earlier attempt made it worse: a rule telling the model to cite what it
+claims cut validity from 8/10 to 4/10 by pushing it toward finer invented
+pinpoints, not fewer.

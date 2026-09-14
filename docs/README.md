@@ -4,6 +4,7 @@
 | --- | --- |
 | [architecture/](architecture) | How the system is built and why it departs from the specification |
 | [corpus/](corpus) | Where documents come from and how to obtain them |
+| [evaluation/](evaluation) | What the generation numbers mean and how far to trust them |
 | [operations/](operations) | Current status, known limits, what is measured |
 | [security/](security) | Threat model and data-protection posture |
 | [specification/](specification) | The original design documents, kept for context |
@@ -18,6 +19,9 @@
    and build paths.
 3. [operations/STATUS.md](operations/STATUS.md) states what works, what does not,
    and what the evaluation does not catch.
+4. [evaluation/GENERATION_MEASUREMENT.md](evaluation/GENERATION_MEASUREMENT.md)
+   explains why the citation figure is a range rather than a number, and what
+   the strict count is really counting.
 
 ## A note on specification/
 

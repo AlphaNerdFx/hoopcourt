@@ -238,8 +238,17 @@ Superseded from the original sequence:
 * **Step 9 (Streamlit OCR UI)**, cut; with no OCR it guards an empty queue.
 
 Measured status: 43/43 on the evaluation with temporal isolation at 100%, the
-gate; 300 unit tests green; index 46 documents (18 PDFs, 7 opinions, 21
-timeline entries) / 5,725 chunks / 0 orphaned vectors. Generation is separate: citation validity measured at 8/10 on the
-grounded-citation subset, so the retriever is clean and the writer still
-fabricates. Run `python tests/eval/run_eval.py [--with-generation]` for current
-numbers, and read DECISIONS.md before trusting any of them.
+gate; 318 unit tests green; index 46 documents (18 PDFs, 7 opinions, 21 timeline
+entries) / 5,725 chunks / 0 orphaned vectors. The 43/43 is measured against
+recall terms tightened in D18: four checks had been passing on terms appearing in
+49-95% of the expected document and could not fail.
+
+Generation is measured separately and is **not reproducible even at temperature
+0** (llama.cpp's GPU forward pass is not bitwise stable), so it is reported as a
+range: three full runs of mistral:7b scored 17, 19 and 18 of 26. Classifying
+every fabricated citation against the exact context supplied gives **one
+genuinely invented citation per 26 questions**; the rest are a supplied citation
+narrowed to a subsection. The retriever is clean and the writer is over-precise.
+Run `python tests/eval/run_eval.py [--with-generation]` for current numbers, read
+DECISIONS.md before trusting any of them, and
+docs/evaluation/GENERATION_MEASUREMENT.md for what the generation figures mean.

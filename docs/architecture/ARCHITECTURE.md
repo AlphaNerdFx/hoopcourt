@@ -6,32 +6,72 @@ is never a *candidate* for retrieval, not merely unlikely to rank.
 ## Request path
 
 ```
+GET  /                               src/api/static/index.html
+     single page, no build step, no dependencies
+
 POST /query
-  │
-  ├─ 1. Token gate                     src/api/tokens.py
-  │     >1,000 tokens -> 400, before any retrieval work
-  │
-  ├─ 2. Temporal router                src/api/router.py
-  │     explicit year  -> that season
-  │     ambiguous 2023 -> 409 + both options, search SUSPENDED
-  │     trigger term within 6 words of a historical cue -> that era
-  │     decade slang   -> decade midpoint
-  │     nothing        -> current_season()
-  │
-  ├─ 3. Season -> document ids         src/db/schema.py
-  │     WHERE start_season <= y AND end_season >= y
-  │     no documents -> [] -> ungrounded, and that is the correct answer
-  │
-  ├─ 4. Pre-filtered KNN               src/db/search.py
-  │     embedding MATCH ? AND k = ? AND doc_id IN (...)   <- metadata column
-  │     ORDER BY distance ASC LIMIT k                     <- k is PER DOCUMENT
-  │
-  └─ 5. Generation (optional)          src/model/generation.py
-        no backend -> sources returned, answer omitted
+  |
+  +- 1. Token gate                   src/api/tokens.py
+  |     >1,000 tokens -> 400, before any retrieval work
+  |
+  +- 2. Temporal router              src/api/router.py
+  |     explicit year      -> that season
+  |     ambiguous boundary -> 409 + both options, search SUSPENDED
+  |     extinct term       -> fires on presence ("reserve clause")
+  |     live term          -> needs a cue within 6 words ("coin flip")
+  |     decade slang       -> decade midpoint
+  |     nothing            -> current_season()
+  |
+  +- 3. Season -> document ids       src/db/schema.py
+  |     start_season <= y <= end_season, filtered by source_tier
+  |
+  +- 4. Two retrieval channels       src/db/search.py
+  |     sources : primary + judicial, era-filtered, top-k
+  |     timeline: curated entries, era-filtered, distance-gated
+  |     both use: MATCH ? AND k = ? AND doc_id IN (...)  <- metadata column
+  |               ORDER BY distance ASC LIMIT k          <- k is PER DOCUMENT
+  |
+  +- 5. Coverage                     src/api/main.py
+  |     no documents for the era -> covered=false, names the nearest
+  |     documents but no match    -> covered=true, reason=no_match
+  |
+  +- 6. Generation (optional)        src/model/generation.py
+  |     Ollama first, then llama-cpp; absent -> sources only, answer null
+  |
+  +- 7. Citation check               src/model/verify.py
+        every citation matched against the passages actually supplied
+        a real document with an invented pinpoint is still fabrication
 ```
 
-Step 4 is where era isolation actually happens, and it depends on a specific
-sqlite-vec behaviour, see [DECISIONS.md](DECISIONS.md) D2.
+Step 4 is where era isolation happens and it depends on a specific sqlite-vec
+behaviour, see [DECISIONS.md](DECISIONS.md) D2.
+
+### Why two channels rather than one ranking
+
+Curated timeline summaries are dense and query-shaped, so in a shared top-k they
+outrank the governing text they summarise. Retrieved separately, `sources`
+answers *what the rule was* and `timeline` answers *when it changed*, and neither
+displaces the other.
+
+The timeline channel widens past the routed era only when the question concerns a
+season later than any entry covers. That answers undated questions like "when was
+the salary cap introduced?" without letting a 1985 entry answer a 1975 question,
+or a 1946 entry answer a 1940 one.
+
+### Concurrency
+
+Two bugs lived here and both only appeared under load, which is worth knowing
+before adding a third.
+
+FastAPI runs sync handlers and their dependencies in a threadpool. A SQLite
+connection could therefore be opened on one thread and closed on another, so
+connections are created with `check_same_thread=False`. That is safe only because
+no connection is ever shared: each request opens and closes its own.
+
+The embedding model is loaded once behind a lock and warmed at startup. The
+unguarded lazy version let several first-requests race into the same load, which
+surfaces as `NotImplementedError: Cannot copy out of meta tensor` and reads like
+a hardware fault rather than a race.
 
 ## Build path
 
@@ -87,7 +127,13 @@ evaluation suite run without it, on CPU, offline, free.
 ## What is measured
 
 `tests/eval/run_eval.py` reports routing accuracy, temporal isolation, retrieval
-precision, recall proxy, and refusal correctness across 40 labelled questions.
+precision, recall proxy, refusal correctness and anachronism avoidance across 43
+labelled questions. With `--with-generation` it also measures citation validity:
+whether the answer cited only what it was handed.
+
+Retrieval and generation are scored separately on purpose. They fail differently
+and have different fixes, and a single end-to-end number would hide a clean
+retriever behind a fabricating writer.
 
 The gate is **temporal isolation = 100%**. `CLAUDE.md` §2.2 calls rule bleeding a
 fatal system error, so it is treated as a correctness failure rather than a

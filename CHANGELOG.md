@@ -9,6 +9,24 @@ is measured, not just the retrieval layer.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Citation counts were under-reported in the UI.** A bracket only counted as a
+  citation if it held a word of four or more letters, which discarded 8 of the 46
+  indexed documents, the 2023 NBA CBA and every historical CBA among them,
+  because "CBA" is three letters. An answer carrying three citations displayed
+  "1/1 citations verified". A page or part locator now qualifies too; quoted
+  enumeration still does not.
+- **Casual Fan mode could never pass the grounding check.** It puts references on
+  a trailing "Sources:" line, as CLAUDE.md sec.6 asks, and writes them
+  unbracketed, so every casual answer reported "cites nothing". The block is now
+  read, and only lines matching a supplied citation exactly are counted.
+
+Both were found by reading transcripts of real sessions. Neither was visible to
+the test suite, because no test read an answer the way a person does, and because
+the evaluation only ever runs Legal Scholar mode.
+
+
 ## [0.9.0] - 2026-09-15
 
 Release candidate for 1.0.0, not 1.0.0 itself. Everything listed below is done;

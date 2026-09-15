@@ -162,6 +162,15 @@ commercial products whose data `DATA_SOURCES.md` rules out taking.
 
 ## Known issues
 
+- [ ] **The evaluation never runs Casual Fan mode.** `run_eval.py` passes
+      `style="scholar"` only, so half the shipped answer styles is unmeasured.
+      That is how a mode which could never score a single citation survived every
+      run. Add casual coverage before claiming anything about it.
+- [ ] "What is the Stepien Rule?" retrieves the Official Rulebook (flopping,
+      jump balls) rather than the CBA trade provisions where the rule lives, and
+      the model then answers from general knowledge and gets the owner and the
+      franchise wrong. Same shape as the max-salary gap D18 fixed.
+
 - [ ] `CBA 1995.pdf` carries OCR debris on a handful of pages (`30 --~;1`).
       Only the leading header line is stripped, so a second junk line can survive
       into chunk text. One document; stripping harder risks eating real text.

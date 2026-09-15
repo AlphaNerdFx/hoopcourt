@@ -256,3 +256,47 @@ project has, and it is not the provision that answers the question.
 4. Do not reword these questions to recover the number. They ask something a
    legal corpus answers with a formula, which is a fair question to ask a legal
    expert, and the honest response is the formula and its citation.
+
+---
+
+## 10. Two verifier defects, found by reading the UI rather than by testing
+
+Found in transcripts of real sessions, not by the suite. Both under-reported
+grounding, and both had been present the whole time.
+
+**A bracket was only a citation if it held a word of four or more letters.**
+That rule keeps quoted enumeration ("5a, i", "(iii)") out of the count, and it
+had a side effect nobody checked: it discarded **8 of the 46 indexed documents**,
+including the 2023 NBA CBA and every historical CBA, because "CBA" is three
+letters. `[CBA 1995, p. 31]` was silently dropped. Only citations that happened
+to carry "Article" or "Section" survived. Observed live: an answer containing
+three citations displayed "1/1 citations verified". A locator (`p. N`, `part N`)
+now qualifies as well; enumeration still does not.
+
+**Casual Fan mode could never pass.** It puts references on a trailing
+"Sources:" line, which CLAUDE.md sec.6 asks for explicitly, and writes them
+unbracketed. Reading bracketed text only, every casual answer scored as
+ungrounded: **5 of 5** in the transcripts. The block is now read, and a line is
+counted only when it matches a supplied citation exactly, so prose under the
+heading cannot become a reference.
+
+### What this did and did not change
+
+It would be convenient to say these corrupted the measurements. They did not,
+and the re-measurement says so plainly: 14, 15 and 14 of 26 after the fix,
+against 18, 14 and 14 before it.
+
+The reason is that `run_eval.py --with-generation` only ever runs
+`style="scholar"`, which cites inline and usually includes an Article and
+Section, so the acronym rule rarely bit. **Casual mode is not exercised by the
+evaluation at all**, which is why a mode that could never score a single
+citation went unnoticed through every run reported in this document.
+
+Two lessons, and the second is the one that generalises:
+
+1. An answer's grounding badge is user-facing output. It was wrong for months
+   and no test could see it, because no test read an answer the way a person
+   does.
+2. **The evaluation covers one of the two shipped answer styles.** Whatever is
+   not exercised is not measured, and "the suite is green" says nothing about
+   it. Casual mode needs eval coverage before any claim about it is credible.

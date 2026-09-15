@@ -31,7 +31,7 @@ build, query, or evaluate.
 | Pre-1995 coverage (opinions + curated timeline) | working, 1946 onward |
 | Generation (Ollama, local GGUF, or optional cloud) | working |
 | Web interface at `/` | working |
-| Citation grounding | 14-18 of 26 across three runs, see Limitations |
+| Citation grounding | 14-15 of 26 typical, see Limitations |
 
 ## Quick start
 
@@ -116,8 +116,9 @@ Stated plainly, because a system about grounding should be honest about its own.
 43/43 across the evaluation, exactly reproducible, and measured without an LLM.
 Temporal isolation is a hard gate: any leak exits non-zero.
 
-**Generation is the weak half, and its number is a range.** Three full runs of
-`mistral:7b` over the same 26 answerable questions scored **18, 14 and 14**.
+**Generation is the weak half, and its number is a range.** Six full runs of
+`mistral:7b` over the same 26 answerable questions scored **18, 14, 14, 14, 15
+and 14**; the most recent three, on the current code, were 14, 15 and 14.
 Nothing changed between them. Generation is **not reproducible on this stack even
 at temperature 0**: sampling is greedy, but llama.cpp's GPU forward pass is not
 bitwise stable. Treat any single generation figure, including one you measure

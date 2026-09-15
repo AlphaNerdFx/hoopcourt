@@ -202,3 +202,27 @@ def test_a_failing_generator_returns_sources_not_a_500(client):
     # Nothing was generated, so nothing was checked. Reporting trustworthy=True
     # here would claim a clean grounding result for an answer that never existed.
     assert body["grounding"]["checked"] is False
+
+
+@pytest.mark.parametrize("length", [401, 800, 5000])
+def test_source_excerpt_does_not_cut_mid_word(length):
+    """A blunt slice ended previews mid-word ("...the last day of such Sal"),
+    which reads as though the chunk were truncated. Chunks run to a Section or
+    paragraph boundary and are several times a preview's length; only the
+    preview is short, so only the preview should look short."""
+    from src.api.main import EXCERPT_CHARS, _excerpt
+
+    # Build past the cap rather than near it: at exactly 40 words this lands on
+    # 399 characters, under the cap, and the preview is correctly left whole.
+    text = " ".join(["provision"] * (length // 10 + 10))
+    out = _excerpt(text)
+    assert out.endswith("...")
+    assert len(out) <= EXCERPT_CHARS + 3
+    assert not out.removesuffix("...").endswith("provisio")
+
+
+def test_a_short_source_excerpt_is_left_alone():
+    from src.api.main import _excerpt
+
+    assert _excerpt("Section 6. Minimum Player Salary.") == \
+        "Section 6. Minimum Player Salary."

@@ -117,6 +117,24 @@ class Source(BaseModel):
     excerpt: str
 
 
+EXCERPT_CHARS = 400
+
+
+def _excerpt(text: str) -> str:
+    """A display preview, cut at a word boundary.
+
+    A blunt slice ends mid-word ("...following the last day of such Sal"), which
+    reads as though the chunk itself were truncated. It is not: chunks run to a
+    Section or paragraph boundary and are several times this length. Only the
+    preview is short, so only the preview should look short.
+    """
+    if len(text) <= EXCERPT_CHARS:
+        return text
+    cut = text[:EXCERPT_CHARS]
+    space = cut.rfind(" ")
+    return (cut[:space] if space > EXCERPT_CHARS // 2 else cut).rstrip() + "..."
+
+
 class Coverage(BaseModel):
     """Why a query returned nothing, when it did.
 
@@ -239,7 +257,7 @@ def query(request: QueryRequest, conn=Depends(get_conn)):
         return Source(
             document=r["document"], article=r["article"], section=r["section"],
             page=r["page"], citation=format_citation(r), distance=r["distance"],
-            excerpt=r["text"][:400], source_tier=r.get("source_tier", "primary"),
+            excerpt=_excerpt(r["text"]), source_tier=r.get("source_tier", "primary"),
         )
 
     sources = [to_source(r) for r in rows]

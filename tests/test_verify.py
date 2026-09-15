@@ -133,3 +133,84 @@ def test_absurd_page_range_is_not_expanded():
     means it fails the check rather than generating a hundred lookups."""
     cites = extract_citations("See [Some Doc, p. 1-500].")
     assert cites == ["Some Doc, p. 1-500"]
+
+
+# --- Found by reading real answers out of the running UI, not by testing. ---
+
+PAGE_ONLY = [
+    {"document": "2024-25 CBA 101", "article": None, "section": None, "page": 12,
+     "source_tier": "primary"},
+    {"document": "CBA 1995", "article": None, "section": None, "page": 31,
+     "source_tier": "primary"},
+]
+
+
+@pytest.mark.parametrize("citation", [
+    "2024-25 CBA 101, p. 12",
+    "CBA 1995, p. 31",
+])
+def test_a_citation_whose_document_is_an_acronym_is_not_discarded(citation):
+    """The regression. Requiring a word of four or more letters to treat a
+    bracket as a citation dropped 8 of the 46 indexed documents, including the
+    2023 NBA CBA and every historical CBA: "CBA" is three letters.
+
+    Observed live: an answer carrying three bracketed citations displayed
+    "1/1 citations verified", having silently discarded two of them.
+    """
+    assert extract_citations(f"As stated [{citation}].") == [citation]
+
+
+@pytest.mark.parametrize("noise", ["5a, i", "b, ii", "(iii)", "4"])
+def test_quoted_enumeration_is_still_not_a_citation(noise):
+    """Why the four-letter rule existed. Legal text is full of bracketed
+    enumeration that an answer quotes verbatim, and counting it as fabrication
+    once halved the measured rate. It must stay excluded."""
+    assert extract_citations(f"the clause [{noise}] applies") == []
+
+
+def test_a_trailing_sources_list_counts_as_citing():
+    """Casual Fan mode puts references on a final line rather than inline, which
+    CLAUDE.md sec.6 asks for, and the model writes them unbracketed. Read
+    bracketed-only, every casual answer scored as ungrounded: 5 of 5 observed."""
+    answer = (
+        "Teams over the second apron lose the ability to trade that first round "
+        "pick, and it only unfreezes if they drop back under the level in three "
+        "of the next four years, which is a long way back for a contender.\n\n"
+        "Sources:\n"
+        "- 2024-25 CBA 101, p. 12\n"
+        "- CBA 1995, p. 31"
+    )
+    report = verify_citations(answer, PAGE_ONLY)
+    assert report.supported == ["2024-25 CBA 101, p. 12", "CBA 1995, p. 31"]
+    assert not report.uncited_claim
+    assert report.ok
+
+
+def test_a_sources_list_cannot_manufacture_a_citation():
+    """Only a line matching a supplied citation exactly is counted. Anything
+    else is left alone rather than guessed at, so prose under the heading cannot
+    become a reference."""
+    answer = (
+        "The Stepien Rule is named after the owner of a team that traded away "
+        "its first round picks for years on end, and the league wrote a rule to "
+        "stop anyone repeating it. None of that is in the documents here.\n\n"
+        "Sources:\n"
+        "- A Document Never Supplied, p. 4\n"
+        "- general knowledge"
+    )
+    report = verify_citations(answer, PAGE_ONLY)
+    assert report.supported == []
+    assert report.uncited_claim, "an answer resting on nothing must still be flagged"
+
+
+def test_inline_citations_are_not_double_counted_with_the_list():
+    """Legal Scholar mode cites inline and may also summarise at the end.
+    Counting both would report more citations than the answer contains."""
+    answer = (
+        "The minimum is set by the scale [CBA 1995, p. 31] for that year, and "
+        "nothing else in the agreement displaces it for a standard contract.\n\n"
+        "Sources:\n"
+        "- CBA 1995, p. 31"
+    )
+    report = verify_citations(answer, PAGE_ONLY)
+    assert report.total == 1

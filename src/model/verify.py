@@ -35,6 +35,18 @@ NON_CITATION = re.compile(r"^\s*(?:\d+|sic|\.\.\.|…|see|ibid\.?|id\.?)\s*$", r
 # invented document, which always names one.
 RE_HAS_WORD = re.compile(r"[A-Za-z]{4,}")
 
+# ...but that rule alone silently discarded citations to 8 of the 46 indexed
+# documents, including the 2023 NBA CBA and every historical CBA. "CBA 1995,
+# p. 31" has no word of four letters: "CBA" is three. Such a citation was
+# dropped, so an answer citing nothing but page-level CBA references was scored
+# as having cited nothing at all. Observed live: an answer carrying three
+# bracketed citations reported "1/1 citations verified", and the two it dropped
+# were "2024-25 CBA 101, p. 12".
+#
+# A locator is the other thing that makes a bracket a citation. Enumeration
+# quoted out of the text ("5a, i", "(iii)") never carries one.
+RE_LOCATOR = re.compile(r"\b(?:pp?\.|part)\s*\d", re.I)
+
 # "p. 1, p. 2, p. 4" and "p. 28-29" are several citations written once. Splitting
 # them measures grounding; leaving them fused measures punctuation.
 RE_REPEATED_PAGE = re.compile(r",\s*(?=p\.\s*\d)", re.I)
@@ -100,9 +112,36 @@ def extract_citations(answer: str) -> list[str]:
     out: list[str] = []
     for match in RE_BRACKETED.finditer(answer or ""):
         inner = match.group(1).strip()
-        if not inner or NON_CITATION.match(inner) or not RE_HAS_WORD.search(inner):
+        if not inner or NON_CITATION.match(inner):
+            continue
+        if not (RE_HAS_WORD.search(inner) or RE_LOCATOR.search(inner)):
             continue
         out.extend(_expand(inner))
+    return out
+
+
+RE_SOURCES_HEADING = re.compile(r"^\s*sources?\s*:?\s*$", re.I)
+
+
+def sources_block_citations(answer: str, allowed: set[str]) -> list[str]:
+    """Citations listed under a trailing "Sources:" heading, one per line.
+
+    Only lines that match a supplied citation exactly are returned. A line that
+    is not one of the citations the model was handed is left alone rather than
+    guessed at: this exists to find references the model really did give, not to
+    manufacture them out of prose.
+    """
+    lines = (answer or "").splitlines()
+    start = next((i for i, ln in enumerate(lines) if RE_SOURCES_HEADING.match(ln)), None)
+    if start is None:
+        return []
+    out: list[str] = []
+    for line in lines[start + 1:]:
+        candidate = line.strip().lstrip("-*\u2022 ").strip()
+        if not candidate:
+            continue
+        if normalise(candidate) in allowed:
+            out.append(candidate)
     return out
 
 
@@ -134,7 +173,17 @@ def verify_citations(
                     for c in context_chunks if c.get("document")}
 
     report = CitationReport()
-    for citation in extract_citations(answer):
+    citations = extract_citations(answer)
+    if not citations:
+        # Casual Fan mode puts its references on a trailing "Sources:" line
+        # rather than inline, which CLAUDE.md sec.6 asks for explicitly, and in
+        # practice the model writes them as a plain list without brackets. Read
+        # bracketed-only and every casual answer scores as ungrounded: observed
+        # on 5 of 5. Accepting the block is safe because a line is only counted
+        # when it matches a supplied citation exactly, so anything that is not a
+        # citation cannot become one.
+        citations = sources_block_citations(answer, allowed_full | allowed_docs)
+    for citation in citations:
         key = normalise(citation)
         if key in allowed_full or key in allowed_docs:
             report.supported.append(citation)

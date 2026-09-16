@@ -34,6 +34,9 @@ SAMPLE_FRACTIONS = (0.15, 0.30, 0.45, 0.60, 0.75, 0.90)
 # still be useless: fused tokens embed as noise. CBA 2017 shipped with 35% of its
 # chunks affected before X_TOLERANCE was tuned, so this is checked, not assumed.
 RE_RUN_TOGETHER = re.compile(r"[a-z][A-Z][a-z]")
+# Proper-noun intercaps are not extraction failures. See
+# src/ingest/indexer.py:fused_spans for the measurement behind this.
+RE_NAME_PARTICLE = re.compile(r"\b(?:Mc|Mac|De|Di|La|Le|Van|Von|O')[A-Z][a-z]")
 RUN_TOGETHER_LIMIT = 3    # per sampled page, averaged
 MIN_TRUSTWORTHY_SAMPLES = 3   # below this the median is one sparse page
 
@@ -95,7 +98,8 @@ def audit(manifest_path: Path, data_dir: Path, samples: int) -> int:
         else:
             text_blocks += n
         counts = [len(t) for t in texts]
-        fused = [len(RE_RUN_TOGETHER.findall(t)) for t in texts]
+        fused = [len(RE_RUN_TOGETHER.findall(RE_NAME_PARTICLE.sub("", t)))
+                 for t in texts]
         median = statistics.median(counts) if counts else 0
         median_fused = statistics.median(fused) if fused else 0
 

@@ -110,3 +110,31 @@ def test_body_text_around_debris_is_kept_in_order():
         "no Player Contract shall provide for a Salary of less than",
         "the following amounts:",
     ]
+
+
+# --- Proper-noun intercaps are not extraction failures ---
+
+@pytest.mark.parametrize("text", [
+    "Jon McGlocklin, McCoy McLemore, Thomas Mesehery",
+    "DeShaney v. Winnebago County and LaFave and Van Buren",
+    "O'Brien, MacArthur and DiGregorio were named",
+])
+def test_names_are_not_counted_as_fused_words(text):
+    """The detector exists for PDF kerning failures. Court opinions are full of
+    party names that intercap legitimately, and a single Robertson plaintiff
+    list trips it three times in one sentence.
+
+    Measured: this pushed the public-domain index the release workflow builds to
+    1.26% fused, over the 1% gate, so `release.yml` could not build at all. It
+    had never been noticed because the workflow has never run: there is no
+    remote."""
+    from src.ingest.indexer import fused_spans
+
+    assert fused_spans(text) == []
+
+
+def test_real_fusion_is_still_caught():
+    """The CBA 2017 failure mode, which is what the detector is for."""
+    from src.ingest.indexer import fused_spans
+
+    assert len(fused_spans("foreachSeasonoftheContract the Player shall")) >= 2

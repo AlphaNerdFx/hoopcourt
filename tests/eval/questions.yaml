@@ -433,6 +433,7 @@ questions:
   question: "What is the Stepien Rule?"
   expect_route: default_modern
   expect_year: CURRENT
+  expect_documents: ["NBA Constitution 2024", "2023 NBA CBA", "2024-25 CBA 101"]
   forbid_documents: ["CBA 1995", "NBPA CBA 1999", "CBA 2005", "CBA 2011", "CBA 2017"]
   # 1 of 100 Constitution chunks. Measured before use: the recall proxy is only
   # as strong as its rarest accepted term, and four checks once passed on terms
@@ -444,6 +445,7 @@ questions:
   question: "What are Bird rights?"
   expect_route: default_modern
   expect_year: CURRENT
+  expect_documents: ["2023 NBA CBA", "2024-25 CBA 101", "NBA Constitution 2024"]
   forbid_documents: ["CBA 1995", "NBPA CBA 1999", "CBA 2005", "CBA 2011", "CBA 2017"]
   # 2.1% of the 2023 CBA's chunks, 3.0% of CBA 101's.
   expect_terms_any: ["Qualifying Veteran Free Agent"]

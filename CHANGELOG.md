@@ -11,6 +11,13 @@ is measured, not just the retrieval layer.
 
 ### Added
 
+- `docs/project/VERSIONING.md`, `docs/project/TESTING.md` and
+  `docs/project/CODE_REVIEW.md`: what each version digit means here, what each
+  testing tier may depend on and why CI cannot cover all of them, and the
+  two-axis review rubric.
+- `pyproject.toml` with pytest configuration and a `corpus` marker. Coverage is
+  reported in CI and deliberately not gated: a number that blocks a merge
+  invites tests written to raise the number rather than to catch a defect.
 - **Colloquial rule names are expanded into the corpus's own language before
   retrieval** (`concept_aliases.yaml`, DECISIONS D19). Ten common NBA terms
   appear in 0 of 5,725 chunks; the embedding model bridges most of them unaided,
@@ -28,6 +35,20 @@ is measured, not just the retrieval layer.
 
 ### Fixed
 
+- **The release workflow could not build the public-domain index.** The
+  fused-word gate, which exists to catch PDF kerning failures like
+  `foreachSeasonoftheContract`, was firing on proper-noun intercaps: a single
+  Robertson plaintiff list reading "Jon McGlocklin, McCoy McLemore" trips it
+  three times in one sentence, pushing a judicial-only build to 1.26% against a
+  1% limit. Name particles (Mc, Mac, De, Di, La, Le, Van, Von, O') are now
+  ignored by both the indexer and `audit_corpus.py`. Measured: 3 chunks flagged
+  before, 0 after, real fusion still caught. Never noticed because `release.yml`
+  has never run, there being no remote.
+- The release workflow runs the whole evaluation on that index rather than one
+  category, so the temporal-isolation gate actually runs at release.
+  Expectations a partial index cannot meet are skipped rather than failed,
+  because a release log full of expected failures teaches people to ignore
+  failures.
 - **Scanner debris reached chunk text and user-facing source previews.** The
   running-header strip examined only the first line of a page, so marks left by
   CBA 1995's scan survived mid-page (`,----,`, `~. ,.)`). 89 of that document's
@@ -66,7 +87,15 @@ is measured, not just the retrieval layer.
 - The source preview cuts on any whitespace, not only a space; a passage whose
   tail was a line break fell back to the mid-word cut the change removed.
 
-Both original defects were found by reading transcripts of real sessions. Neither was visible to
+Both original defects were found by reading transcripts of real sessions.
+
+### Security
+
+- A pasted UI transcript containing verbatim corpus text was removed from git
+  history, not merely untracked. It had been swept in by a `git add -A` against
+  sec.7.1, which keeps content out of this repository. The purge rewrote only
+  the nine commits after `v0.9.0`: no commit was lost, both tags kept their
+  original SHAs, and nothing had been pushed. Neither was visible to
 the test suite, because no test read an answer the way a person does, and because
 the evaluation only ever runs Legal Scholar mode.
 

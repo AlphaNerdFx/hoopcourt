@@ -1,0 +1,16 @@
+# Tooling configuration only. This project is not packaged for PyPI: it is
+# installed by cloning, because the index must be built from documents the user
+# fetches themselves (docs/corpus/DATA_SOURCES.md).
+#
+# ruff configuration stays in ruff.toml, which ruff reads first.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# `-q` by default keeps a 428-test run readable. Coverage is reported, never
+# gated: a number that blocks a merge invites tests written to raise the number
+# rather than to catch a defect, and every serious defect in this project so far
+# was in code the suite already covered.
+addopts = "-q"
+markers = [
+    "corpus: needs the real corpus, which is gitignored and absent in CI",
+]

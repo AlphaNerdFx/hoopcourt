@@ -103,6 +103,23 @@ def index_chunks(
 RE_FUSED = re.compile(r"[a-z][A-Z][a-z]")
 FUSED_PER_CHUNK_LIMIT = 3
 
+# Capitalised name particles intercap legitimately and are not extraction
+# failures. Court opinions are full of them, because they are full of party
+# names: a single Robertson plaintiff list reading "Jon McGlocklin, McCoy
+# McLemore" trips the detector three times in one sentence and pushes a
+# judicial-only build to 1.26%, over the 1% gate. Measured on the public-domain
+# index the release workflow builds: 3 chunks flagged, all the same passage,
+# 0 once these are ignored.
+#
+# Removing them costs nothing for PDFs either. "McGlocklin" in a PDF is a name
+# there too.
+RE_NAME_PARTICLE = re.compile(r"\b(?:Mc|Mac|De|Di|La|Le|Van|Von|O')[A-Z][a-z]")
+
+
+def fused_spans(text: str) -> list[str]:
+    """Runs that look like two words joined, ignoring proper-noun intercaps."""
+    return RE_FUSED.findall(RE_NAME_PARTICLE.sub("", text))
+
 
 def index_integrity(conn: sqlite3.Connection) -> dict[str, int]:
     """Counts used by the build gate and the /health endpoint."""
@@ -135,7 +152,7 @@ def text_quality(conn: sqlite3.Connection) -> dict[str, object]:
         "FROM document_chunks c JOIN documents d ON d.id = c.doc_id"
     ):
         total += 1
-        if len(RE_FUSED.findall(row["text"])) >= FUSED_PER_CHUNK_LIMIT:
+        if len(fused_spans(row["text"])) >= FUSED_PER_CHUNK_LIMIT:
             fused_chunks += 1
             worst[row["doc"]] = worst.get(row["doc"], 0) + 1
     return {

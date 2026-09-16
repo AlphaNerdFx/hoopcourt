@@ -38,7 +38,12 @@ jobs:
         # The corpus is gitignored, so tests must run without it. Anything that
         # needs a real document is skipped, not silently passed: see the
         # data-dependent markers in tests/test_manifest.py.
-        run: pytest tests/ -q --maxfail=1
+        #
+        # Coverage is reported, never gated. A number that blocks a merge invites
+        # tests written to raise the number rather than to catch a defect, and
+        # every serious defect found in this project so far was in code the suite
+        # already covered. See docs/project/TESTING.md.
+        run: pytest tests/ -q --maxfail=1 --cov=src --cov-report=term-missing
 
   integrity:
     name: Corpus and timeline integrity

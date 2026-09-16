@@ -71,7 +71,17 @@ def evaluate(db_path: str, questions: list[dict], verbose: bool,
         # ---- routing ----
         if "expect_route" in q:
             got, want = route["route_action"], q["expect_route"]
-            r.check("route", got == want, f"route={got} want={want}")
+            if want == "require_season_clarification" and not ambiguous:
+                # Ambiguity is derived from primary-tier document windows
+                # (db.schema.ambiguous_seasons). On a partial index with no
+                # primary documents, such as the public-domain index the release
+                # workflow builds, no year can be ambiguous and the expectation
+                # is unmeetable. Skipped, not failed: a release log full of
+                # expected failures teaches people to ignore failures.
+                r.checks["route"] = None
+                r.notes.append("no primary documents indexed - route skipped")
+            else:
+                r.check("route", got == want, f"route={got} want={want}")
         if "expect_year" in q:
             want = q["expect_year"]
             # "CURRENT" tracks the season in progress, so an unqualified question

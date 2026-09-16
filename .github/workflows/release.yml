@@ -54,7 +54,12 @@ jobs:
                          for d in docs if d.get("source_tier") == "judicial"))
           PY
             )
-          python tests/eval/run_eval.py --db ci.db --category trigger_routing
+          # The whole suite, not one category: temporal isolation is the gate
+          # (docs/project/VERSIONING.md), and running only trigger_routing meant
+          # the gate never ran at release. Questions whose documents are absent
+          # from this public-domain index are skipped rather than failed, which
+          # run_eval.py already handles by recording them as None.
+          python tests/eval/run_eval.py --db ci.db
 
   publish:
     name: Publish release
@@ -85,4 +90,7 @@ jobs:
           name: ${{ steps.notes.outputs.tag }}
           body_path: RELEASE_NOTES.md
           draft: false
-          prerelease: ${{ startsWith(steps.notes.outputs.tag, 'v0.') }}
+          # Any 0.x tag, and any tag carrying a pre-release suffix such as
+          # v1.0.0-rc.1. Release candidates exist because part of the gate is
+          # manual: CI has no GPU and no corpus. See docs/project/TESTING.md.
+          prerelease: ${{ startsWith(steps.notes.outputs.tag, 'v0.') || contains(steps.notes.outputs.tag, '-') }}

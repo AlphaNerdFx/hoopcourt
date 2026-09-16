@@ -419,3 +419,31 @@ questions:
   expect_route: strict_season_filter
   expect_year: 1968
   expect_terms_absent: ["two-way"]        # introduced by the 2017 CBA
+
+# ---------------- Colloquial names the corpus never uses ----------------
+# A user asks in the language of broadcasts; the documents are written in
+# contract English. Where the two share no words and no semantic bridge,
+# retrieval fails outright. These ask the way a person actually asks: the
+# existing `bird-rights` question says "Bird rights for a qualifying veteran
+# free agent", which smuggles the governing term into the question and so never
+# tested the nickname at all.
+
+- id: nickname-stepien-rule
+  category: grounded_citation
+  question: "What is the Stepien Rule?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  forbid_documents: ["CBA 1995", "NBPA CBA 1999", "CBA 2005", "CBA 2011", "CBA 2017"]
+  # 1 of 100 Constitution chunks. Measured before use: the recall proxy is only
+  # as strong as its rarest accepted term, and four checks once passed on terms
+  # appearing in half their document.
+  expect_terms_any: ["first round of any NBA Draft"]
+
+- id: nickname-bird-rights
+  category: grounded_citation
+  question: "What are Bird rights?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  forbid_documents: ["CBA 1995", "NBPA CBA 1999", "CBA 2005", "CBA 2011", "CBA 2017"]
+  # 2.1% of the 2023 CBA's chunks, 3.0% of CBA 101's.
+  expect_terms_any: ["Qualifying Veteran Free Agent"]

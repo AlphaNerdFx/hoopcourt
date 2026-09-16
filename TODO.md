@@ -166,10 +166,11 @@ commercial products whose data `DATA_SOURCES.md` rules out taking.
       `style="scholar"` only, so half the shipped answer styles is unmeasured.
       That is how a mode which could never score a single citation survived every
       run. Add casual coverage before claiming anything about it.
-- [ ] "What is the Stepien Rule?" retrieves the Official Rulebook (flopping,
-      jump balls) rather than the CBA trade provisions where the rule lives, and
-      the model then answers from general knowledge and gets the owner and the
-      franchise wrong. Same shape as the max-salary gap D18 fixed.
+- [x] "What is the Stepien Rule?" retrieved the Official Rulebook rather than
+      the governing passage. Fixed by D19: colloquial names are expanded into
+      the corpus's own language for retrieval only. The rule is in **NBA
+      Constitution 2024 p85**, not the CBA. Two eval questions now cover it and
+      fail 0/2 with the alias file removed.
 
 - [ ] `CBA 1995.pdf` carries OCR debris on a handful of pages (`30 --~;1`).
       Only the leading header line is stripped, so a second junk line can survive

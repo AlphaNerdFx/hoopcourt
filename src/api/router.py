@@ -22,6 +22,7 @@ import datetime as _dt
 import os
 import re
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 MAX_PROMPT_TOKENS = 1000
@@ -63,6 +64,60 @@ RE_DANGLING_PREP = re.compile(r"\b(?:in|during|for|of|from|since|by)\s*(?=[?.,;:
 RE_SPACE_BEFORE_PUNCT = re.compile(r"\s+([?.,;:])")
 
 
+ALIAS_FILE = Path(__file__).resolve().parents[2] / "concept_aliases.yaml"
+_ALIASES: list[tuple[str, str]] | None = None
+
+
+def load_aliases(path: Path | None = None) -> list[tuple[str, str]]:
+    """Colloquial rule names paired with the language the documents use.
+
+    Cached at module level: the file is small and constant, and re-reading it per
+    request would put a disk read on the hot path of every query.
+
+    Longest term first, so "Larry Bird rights" is matched before "Bird rights"
+    and the shorter form cannot consume the longer one's prefix.
+    """
+    global _ALIASES
+    if _ALIASES is not None and path is None:
+        return _ALIASES
+    target = path or ALIAS_FILE
+    if not target.exists():
+        # An absent file means no expansions, not a crash. Retrieval without
+        # aliases is degraded, not broken, and the index is the thing this
+        # project cannot run without.
+        return [] if path else (_ALIASES := [])
+    import yaml
+
+    entries = yaml.safe_load(target.read_text(encoding="utf-8")) or {}
+    pairs: list[tuple[str, str]] = []
+    for alias in entries.get("aliases", []):
+        expansion = " ".join(str(alias["expands_to"]).split())
+        for term in [alias["term"], *alias.get("also", [])]:
+            pairs.append((term, expansion))
+    pairs.sort(key=lambda pair: len(pair[0]), reverse=True)
+    if path is None:
+        _ALIASES = pairs
+    return pairs
+
+
+def expand_aliases(text: str, aliases: list[tuple[str, str]] | None = None) -> str:
+    """Replace a colloquial rule name with the wording the corpus uses.
+
+    Substitution rather than addition. Leaving the nickname in keeps the noise
+    that caused the failure: "Stepien Rule" retrieved the Official Rulebook
+    because "Rule" matches a document of that name, and appending the expansion
+    would have left "Rule" pulling in the same direction.
+
+    Embedding only. `build_messages` receives the user's own question, because
+    rewriting someone's words and then answering the rewrite is a different
+    answer from the one they asked for.
+    """
+    for term, expansion in (load_aliases() if aliases is None else aliases):
+        pattern = re.compile(rf"\b{re.escape(term)}\b", re.IGNORECASE)
+        text = pattern.sub(expansion, text)
+    return text
+
+
 def retrieval_text(query: str, route: dict) -> str:
     """The text to embed, which is not always the text the user typed.
 
@@ -84,14 +139,14 @@ def retrieval_text(query: str, route: dict) -> str:
     never used for routing, it may carry meaning that belongs in the query.
     """
     if route.get("route_action") != "strict_season_filter":
-        return query
+        return expand_aliases(query)
     stripped = RE_YEAR.sub(" ", query)
     if stripped == query:
-        return query
+        return expand_aliases(query)
     stripped = RE_SPACE_BEFORE_PUNCT.sub(r"\1", RE_DANGLING_PREP.sub("", stripped))
     stripped = RE_SPACE_BEFORE_PUNCT.sub(r"\1", " ".join(stripped.split()))
     # A question that was nothing but a year still has to retrieve something.
-    return stripped if len(stripped.split()) >= 3 else query
+    return expand_aliases(stripped if len(stripped.split()) >= 3 else query)
 
 # Terms whose historical meaning must override the modern default.
 #

@@ -1,0 +1,45 @@
+# Colloquial names for rules, mapped to the language the documents actually use.
+#
+# The corpus is written in formal contract English. Users ask in the language of
+# broadcasts and forums. Where those two vocabularies share no words AND no
+# semantic bridge, retrieval fails completely: the query embedding has nothing to
+# be near.
+#
+# This list is deliberately short. Most nicknames need no entry, because the
+# embedding model bridges them on its own -- measured against the shipped index,
+# "luxury tax" reaches "Tax Level" at rank 3, "hard cap" reaches "Apron Level" at
+# rank 2, and "supermax" reaches "Designated Veteran" at rank 3, none of which
+# appear verbatim in any chunk. Adding entries for those would be noise.
+#
+# An entry earns its place only when the nickname fails to retrieve the governing
+# language at all. Both entries below were measured failing before being added.
+#
+# `expands_to` is substituted for `term` in the text that gets EMBEDDED. It never
+# reaches the model: the prompt always receives the user's own words, for the
+# same reason src/api/router.py:retrieval_text strips the year only for
+# retrieval. Rewriting a user's question before answering it would put words in
+# their mouth.
+
+aliases:
+  - term: "Stepien Rule"
+    also: ["Stepien rule", "the Stepien"]
+    expands_to: >-
+      trade or exchange its right to select a player in the first round of
+      consecutive NBA Drafts
+    evidence: >-
+      "Stepien" appears in 0 of 5,725 chunks. The rule is NBA Constitution 2024
+      p85, which never names it. Worse, the query's remaining word "Rule"
+      collides with the document named "Official 2025-26 Rulebook", so the top
+      five were all playing rules about flopping and jump balls. Asked
+      descriptively, the Constitution passage ranks 1st at distance 0.276.
+
+  - term: "Bird rights"
+    also: ["Larry Bird rights", "Bird exception", "Bird Rights"]
+    expands_to: >-
+      Qualifying Veteran Free Agent re-signing with his prior Team using the
+      exception that allows a Team Salary above the Salary Cap
+    evidence: >-
+      "Bird rights" appears in 0 of 5,725 chunks and neither does "Larry Bird".
+      The governing term is "Qualifying Veteran Free Agent", which shares no
+      word with the nickname, and "Bird" embeds toward the animal. Retrieval
+      returned 2023 CBA passages that never define the exception.

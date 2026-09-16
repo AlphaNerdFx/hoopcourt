@@ -224,7 +224,7 @@ keeps the CUDA toolchain and the OCR pipeline off the critical path.
 [x] Phase 0: .gitignore before git init (corpus excluded; verified)
 [x] Phase 1: Direct text extraction, 18 PDFs / 3,385 pages   -> src/parser/
 [x] Phase 2: Chunking + embeddings + index population        -> src/ingest/
-[x] Phase 3: Labelled eval set (43 questions) + runner       -> tests/eval/
+[x] Phase 3: Labelled eval set (45 questions) + runner       -> tests/eval/
 [x] Phase 4: FastAPI assembly, token gate, temporal router   -> src/api/
 [x] Phase 5: Prompt templates + generation via Ollama        -> src/model/
 [x] Phase 6: Fetch-and-build distribution + checksums        -> scripts/
@@ -237,8 +237,8 @@ Superseded from the original sequence:
 * **Step 8 (IPFS/BitTorrent)**, replaced by fetch-and-build (sec. 7.1).
 * **Step 9 (Streamlit OCR UI)**, cut; with no OCR it guards an empty queue.
 
-Measured status: 43/43 on the evaluation with temporal isolation at 100%, the
-gate; 351 unit tests green; index 46 documents (18 PDFs, 7 opinions, 21 timeline
+Measured status: 45/45 on the evaluation with temporal isolation at 100%, the
+gate; 367 unit tests green; index 46 documents (18 PDFs, 7 opinions, 21 timeline
 entries) / 5,725 chunks / 0 orphaned vectors. The 43/43 is measured against
 recall terms tightened in D18: four checks had been passing on terms appearing in
 49-95% of the expected document and could not fail.

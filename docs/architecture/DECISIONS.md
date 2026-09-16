@@ -498,3 +498,60 @@ across eras, not that the operative passage was retrieved.
 **The general lesson**, which outlives this fix: a retrieval metric built on
 "does any expected term appear" is only as strong as its rarest accepted term.
 Check the corpus frequency of every term before trusting the check that uses it.
+
+---
+
+## D19, Colloquial rule names are expanded for retrieval, never for the answer
+
+The corpus is written in contract English. Users ask in the language of
+broadcasts and forums. Where those vocabularies share no words **and** no
+semantic bridge, retrieval does not degrade, it fails outright: the query
+embedding has nothing to be near.
+
+**Measured.** Ten common NBA terms appear in **0 of 5,725 chunks**, including
+"Bird rights", "luxury tax", "hard cap" and "supermax". That count alone is not
+the criterion, because the embedding model bridges most of them unaided: asked
+on the shipped index, "luxury tax" reaches "Tax Level" at rank 3, "hard cap"
+reaches "Apron Level" at rank 2, and "supermax" reaches "Designated Veteran" at
+rank 3. None of those phrases appear verbatim anywhere.
+
+Two did fail completely:
+
+| question | before | after |
+| --- | --- | --- |
+| "What is the Stepien Rule?" | not in top 5 | rank 2, top hit d=0.189 |
+| "What are Bird rights?" | not in top 5 | rank 1 |
+
+The Stepien case shows the mechanism clearly. "Stepien" is a surname the model
+has no useful representation for, and the remaining content word, "Rule",
+matches a document named **Official 2025-26 Rulebook**. The top five were
+playing rules about flopping and jump balls. The governing passage, NBA
+Constitution 2024 p85, never uses the name.
+
+**The rule for adding an entry:** the nickname must be measured *failing to
+retrieve the governing language* first. Absence from the corpus is not enough,
+or the list would carry ten entries of which eight are noise. Every entry in
+`concept_aliases.yaml` carries the measurement that justified it, and a test
+asserts that field is non-empty.
+
+**Substitution, not addition.** Appending the expansion would leave the nickname
+in the embedded text, and in the Stepien case the nickname *is* the noise.
+
+**Retrieval only.** `build_messages` receives the user's own words, exactly as
+D18 strips the year for the embedding alone. Rewriting someone's question and
+then answering the rewrite returns an answer to a question they did not ask.
+
+**Why this is not the `historical_concept_mapper` table.** That table maps
+archaic terms to modern analogies for Casual Fan mode, so a reader meeting
+"reserve clause" gets "permanent franchise tag". Its purpose is explanation for
+a human; this is query rewriting for an embedding model. Same shape, different
+job, and overloading it would make both harder to reason about, for the same
+reason `historical_record` is a fourth source tier rather than an overloaded
+`timeline`.
+
+**The eval question this exposed.** The suite already had a `bird-rights`
+question that passed. It asks "What are Bird rights *for a qualifying veteran
+free agent*?", smuggling the governing term into the question, so it never
+tested the nickname. A question written by someone who knows the answer can
+encode the answer. The two questions added here ask the way a person asks, and
+they fail 0/2 with the alias file removed.

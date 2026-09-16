@@ -37,7 +37,11 @@ def test_the_year_and_its_preposition_are_removed(query, expected):
 
 
 def test_a_query_with_no_year_is_untouched():
-    q = "Explain Bird rights."
+    """The example deliberately carries no alias either. It used to say "Explain
+    Bird rights", which broke when alias expansion shipped: the assertion is
+    about year handling, and an example that also trips a second rewrite stops
+    testing the thing it names."""
+    q = "Explain the shot clock reset."
     assert retrieval_text(q, FILTERED) == q
 
 
@@ -76,6 +80,7 @@ def test_every_year_goes_when_several_are_present():
 
 def test_content_words_survive():
     out = retrieval_text("What was the maximum annual salary in 2024?", FILTERED)
+    assert "2024" not in out
     for word in ("maximum", "annual", "salary"):
         assert word in out
 

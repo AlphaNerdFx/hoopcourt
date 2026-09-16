@@ -9,6 +9,23 @@ is measured, not just the retrieval layer.
 
 ## [Unreleased]
 
+### Added
+
+- **Colloquial rule names are expanded into the corpus's own language before
+  retrieval** (`concept_aliases.yaml`, DECISIONS D19). Ten common NBA terms
+  appear in 0 of 5,725 chunks; the embedding model bridges most of them unaided,
+  but "Stepien Rule" and "Bird rights" failed outright. "What is the Stepien
+  Rule?" returned five playing rules about flopping and jump balls, because
+  "Stepien" is a surname the model cannot place and "Rule" matches a document
+  named Official 2025-26 Rulebook. It now reaches NBA Constitution 2024 p85 at
+  distance 0.189. Expansion is substitution, and applies to the embedded text
+  only: the prompt always receives the user's own words.
+- Two evaluation questions covering colloquial phrasing. The suite already had a
+  `bird-rights` question that passed while the nickname failed, because it asks
+  "Bird rights *for a qualifying veteran free agent*" and so smuggles the
+  governing term into the question. The new pair score 0/2 with the alias file
+  removed.
+
 ### Fixed
 
 - **Citation counts were under-reported in the UI.** A bracket only counted as a

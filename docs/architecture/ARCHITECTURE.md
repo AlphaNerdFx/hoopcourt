@@ -27,7 +27,9 @@ POST /query
   |
   +- 4. Query rewrite for embedding  src/api/router.py retrieval_text()
   |     strips the year the filter already consumed, so a rule is not
-  |     outranked by dated worked examples of itself (D18)
+  |     outranked by dated worked examples of itself (D18), and expands
+  |     colloquial rule names into the language the corpus uses (D19).
+  |     Embedding only: the prompt always gets the user's own words.
   |
   +- 5. Two retrieval channels       src/db/search.py
   |     sources : primary + judicial, era-filtered, top-k

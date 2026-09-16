@@ -5,6 +5,7 @@
 | [architecture/](architecture) | How the system is built and why it departs from the specification |
 | [corpus/](corpus) | Where documents come from and how to obtain them |
 | [evaluation/](evaluation) | What the generation numbers mean and how far to trust them |
+| [project/](project) | Versioning policy, testing and staging standards, review rubric |
 | [operations/](operations) | Current status, known limits, what is measured |
 | [security/](security) | Threat model and data-protection posture |
 | [specification/](specification) | The original design documents, kept for context |
@@ -22,6 +23,10 @@
 4. [evaluation/GENERATION_MEASUREMENT.md](evaluation/GENERATION_MEASUREMENT.md)
    explains why the citation figure is a range rather than a number, and what
    the strict count is really counting.
+5. [project/VERSIONING.md](project/VERSIONING.md) says what each version digit
+   means here, and [project/TESTING.md](project/TESTING.md) says what each
+   testing tier may depend on. Read the second before adding a test: every rule
+   in it corresponds to a defect that shipped.
 
 ## A note on specification/
 

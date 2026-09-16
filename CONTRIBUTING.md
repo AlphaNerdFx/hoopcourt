@@ -57,3 +57,22 @@ should refuse.
 Match the surrounding code. Comments explain *why*, particularly where the
 implementation departs from the specification documents, because those departures
 are the parts a future reader will otherwise "fix" back into a bug.
+
+## Standards
+
+Three documents carry the rules, so this file does not restate them:
+
+* [docs/project/VERSIONING.md](docs/project/VERSIONING.md): what the public
+  contract is, and which digit a change moves.
+* [docs/project/TESTING.md](docs/project/TESTING.md): what each testing tier may
+  depend on, why CI can never run the corpus or a model, and eight rules that
+  each exist because a defect shipped.
+* [docs/project/CODE_REVIEW.md](docs/project/CODE_REVIEW.md): the two-axis
+  review, kept separate so a standards pass cannot mask a spec failure.
+
+Two that catch people most often:
+
+* **A test that cannot fail is a defect.** Mutation-test anything claiming to
+  verify a feature: remove the feature and confirm the test goes red.
+* **A generation figure is a range and carries its style.** Generation is not
+  reproducible here even at temperature 0, so one run is a sample.

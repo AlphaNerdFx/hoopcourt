@@ -71,59 +71,14 @@ design that puts box scores in the vector index has made a category error.
 
 ## Phases
 
-### A. Corpus expansion
+Sequencing moved to the commercial repository. What remains here is the
+reasoning that is settled, because settled reasoning is a fact about the project
+and a phase list is a guess about the future.
 
-Officiating material and league history reuse every existing mechanism: the
-manifest, era windows, source tiers, the audit, the fetch-and-build posture. No
-new architecture, which makes this the cheapest value in the roadmap.
-
-One addition: narrative history is neither a governing document nor a curated
-claim, so it earns a fourth tier (`historical_record`) rather than being crammed
-into `timeline`.
-
-### B. Statistics via SQL
-
-`nba_api` is MIT-licensed, but the data behind stats.nba.com is not, and there is
-no published bulk-data licence. An open client does not grant rights to the
-upstream data. So statistics follow the same model as the documents: the user
-fetches on their own machine, and the project redistributes nothing.
-
-The response must say which engine answered. A number from a table and a
-quotation from the CBA carry different kinds of authority, and the source tiers
-already establish that pattern for documents.
-
-### C. The fine-tune
-
-Worth doing only if off-the-shelf models cannot close the citation gap. Only
-`mistral:7b` has ever been measured, so that cheap experiment comes first.
-
-If it is needed, the target is one measurable skill: citation discipline. Copy
-the permitted citation verbatim, never invent a pinpoint, refuse when context is
-thin. Success is defined by the existing evaluation, not by a loss curve.
-
-**The training data boundary is the part that matters.** Weights memorise. A
-model trained on the copyrighted corpus and published on Hugging Face
-redistributes derived copyrighted text, which is the same act D4 rejected for the
-compiled index. Training data is therefore limited to the seven public-domain
-court opinions, the project's own timeline entries, and synthetic pairs derived
-from those. No CBA text.
-
-Ship the adapter only if it beats base plus prompt on the same 43 questions. If
-it loses, publish the negative result.
-
-### D. Dropped
-
-Hoopcourt is a tool, not a service. vLLM and llm-d leave the roadmap with it.
-
-### E. Contracts and cap, blocked
-
-The mechanics already work from the indexed CBA: exceptions, aprons, cap holds,
-and how they interact. What is missing is current per-team numbers, and the
-sources that maintain them are commercial products whose data `DATA_SOURCES.md`
-rules out taking.
-
-Blocked pending a licensable feed. Do not scrape. If the feature is redefined as
-"explain the mechanism", it already ships today.
+The three arguments above are the durable part: this is a tool rather than a
+service, serving infrastructure is sequenced to real load, and statistics are
+not a retrieval problem. Each is recorded in
+[../architecture/DECISIONS.md](../architecture/DECISIONS.md) with the evidence.
 
 ---
 

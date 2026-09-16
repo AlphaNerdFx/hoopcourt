@@ -71,110 +71,19 @@ Nothing below this line is required to make that true.
 
 ---
 
-## Phase A: Corpus expansion
+## Where the roadmap went
 
-Same manifest, same era windows, same tiers, same fetch-and-build posture. No new
-architecture. Cheapest value per unit of work in the roadmap.
+Phases A through E moved to the commercial repository. They were candidate work,
+not commitments, and this file now carries only what is true: known issues with
+the evidence for each, and the concrete next steps.
 
-- [ ] Officiating: case book, points of emphasis, historical rulebook editions.
-- [ ] League history: draft, expansion, franchise moves, labour disputes.
-- [ ] Add a fourth `source_tier` (`historical_record`) rather than overloading
-      `timeline`. Narrative record is not a curated claim.
-- [~] Upgrade medium-confidence timeline entries where a court opinion can
-      replace the league's published history. **The "8 of 21 qualify" estimate
-      was wrong and is corrected here**: audited against the indexed opinions,
-      only `aba-merger-completed` has any judicial coverage at all, and it does
-      not support that entry's claims. Robertson v. NBA (1975) establishes that
-      a merger was proposed and enjoined; the entry claims the 1976 completion,
-      four named franchises and a dispersal draft, none of which a 1975 opinion
-      can source. The other seven have zero judicial coverage: "territorial" in
-      Robertson is antitrust market division, and "three point" is "the NBA
-      argues three points".
-- [ ] **Three timeline entries cite sources that do not support them.** Found by
-      audit, pinned by `tests/test_timeline_sources.py` as xfail so the count can
-      only go down. Each needs a human with network access; guessing a
-      replacement URL is the failure this project exists to prevent.
-      - `baa-nbl-merger` (1946-49, league formation) cites the draft-lottery page
-      - `aba-merger-completed` (1976, ABA merger) cites the same lottery page
-      - `shot-clock` says "Rule 7" and links to `rule-no-1-court-dimensions`
-- [ ] `territorial-picks` is sourced to Wikipedia, the only non-primary source
-      among 21. Acceptable only if no court record or official page exists for
-      an extinct practice; say so in the summary if that is the finding.
+The reason is a specific failure. This file carried the estimate "8 of 21
+timeline entries qualify for a judicial upgrade" for weeks. Measurement
+disproved it: only one entry has any judicial coverage, and that opinion predates
+the claim it would have to support. Nothing marked it as an estimate. A file that
+mixes intent with measurement teaches readers to distrust the measurements too.
 
-After each document: temporal isolation must hold at 100%, and
-`scripts/audit_corpus.py` must report no fused text.
-
----
-
-## Phase B: Statistics, via SQL not RAG
-
-Statistics are not a retrieval problem. See ROADMAP and DECISIONS D14.
-
-- [ ] `scripts/fetch_stats.py` using `nba_api` (MIT), run by the user on their
-      own machine. The client is MIT; the upstream data is not, and
-      stats.nba.com publishes no bulk-data licence. Fetch-and-build, unchanged.
-- [ ] `stats` table and a text-to-SQL engine over it.
-- [ ] A classifier deciding documentary vs statistical, reusing `TemporalRouter`
-      for season resolution.
-- [ ] The response must say which engine answered. A number from a table and a
-      quotation from the CBA carry different authority.
-
----
-
-## Phase C: The fine-tune
-
-**Not the next step.** MVP step 2 measured one invented citation per 26
-questions for both candidate models; the rest of the strict failure count is
-over-precision. Prompting is already exhausted for it: the scholar prompt
-forbids appending sub-paragraph detail and gives `p. 57` vs `p. 57 (a)` as the
-example, and mistral emitted `p. 57 (a)` anyway.
-
-Cheaper things to try first, in order:
-
-- [ ] Report a narrowed permitted citation as its own grounding state instead of
-      calling it fabrication. The closed list is already in hand, so the system
-      can distinguish "invented a document" from "added a subsection to a real
-      citation" and say which. Do not rewrite the citation to make it pass, that
-      launders the failure rather than reporting it.
-- [ ] Measure a larger instruction-following model the same way.
-
-Everything below stands if those fail. See
-[docs/evaluation/GENERATION_MEASUREMENT.md](docs/evaluation/GENERATION_MEASUREMENT.md).
-
-- [ ] Generate training pairs from **public-domain sources only**: the 7 court
-      opinions, your own timeline entries, and synthetic Q&A derived from them.
-      No CBA text. See DECISIONS D15 for why this boundary is not negotiable.
-- [ ] QLoRA an Apache-2.0 base (Qwen2.5-7B-Instruct or Mistral-7B-Instruct).
-- [ ] Evaluate against base plus closed-list prompt on the same 43 questions.
-- [ ] **Ship only if it wins.** If it does not, publish the negative result;
-      that is a useful finding and costs nothing to state.
-- [ ] Publish the adapter (tens of MB, not tens of GB) under a permissive licence.
-
----
-
-## Phase D: Dropped, tool not service
-
-Decided: Hoopcourt is a tool people install, not a service anyone hosts.
-
-That removes vLLM and llm-d from the roadmap entirely rather than deferring them,
-since both exist to serve concurrent users and there are none. It also removes
-the largest legal risk in the project: serving answers derived from copyrighted
-text to the public would have inverted the fetch-and-build posture that every
-other copyright decision rests on. A tool reading documents the user fetched
-themselves does not.
-
-See DECISIONS.md D17.
-
----
-
-## Phase E: Contracts and cap, blocked
-
-The *mechanics* already work from the indexed CBA: exceptions, aprons, cap holds.
-What is missing is current per-team numbers, and the maintained sources are
-commercial products whose data `DATA_SOURCES.md` rules out taking.
-
-- [ ] Blocked pending a licensable feed. Do not scrape. Revisit only if the
-      feature is redefined as "explain the mechanism", which already ships.
+See [docs/project/VERSIONING.md](docs/project/VERSIONING.md) for what ships when.
 
 ---
 

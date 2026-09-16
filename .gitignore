@@ -65,3 +65,9 @@ Thumbs.db
 # committed by a `git add -A` and had to be removed.
 Prompts and Responses.txt
 *transcript*.txt
+
+# Intent, estimates and commercial planning. The public repository documents
+# what is true and shipped; this holds what is merely intended. It belongs in
+# the commercial repository and is ignored here so no `git add -A` can publish
+# it. See docs/project/VERSIONING.md.
+internal/

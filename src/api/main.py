@@ -131,8 +131,15 @@ def _excerpt(text: str) -> str:
     if len(text) <= EXCERPT_CHARS:
         return text
     cut = text[:EXCERPT_CHARS]
-    space = cut.rfind(" ")
-    return (cut[:space] if space > EXCERPT_CHARS // 2 else cut).rstrip() + "..."
+    # Any whitespace, not just a space: legal text is full of newlines, and
+    # rfind(" ") alone fell back to the blunt cut on a passage whose tail was a
+    # line break, which is the mid-word ending this exists to remove.
+    boundary = max(cut.rfind(" "), cut.rfind("\n"), cut.rfind("\t"))
+    # A boundary in the first half means one enormous unbroken token, where
+    # trimming back to it would discard most of the preview to save a word.
+    if boundary <= EXCERPT_CHARS // 2:
+        return cut.rstrip() + "..."
+    return cut[:boundary].rstrip() + "..."
 
 
 class Coverage(BaseModel):

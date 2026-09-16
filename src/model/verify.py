@@ -47,6 +47,28 @@ RE_HAS_WORD = re.compile(r"[A-Za-z]{4,}")
 # quoted out of the text ("5a, i", "(iii)") never carries one.
 RE_LOCATOR = re.compile(r"\b(?:pp?\.|part)\s*\d", re.I)
 
+# A bare document name is weaker than a pinpoint but is not invented, and
+# verify_citations accepts one. "2023 NBA CBA" has no four-letter word and no
+# locator, so it needed its own shape: a word of three or more letters next to a
+# four-digit year. Enumeration ("5a, i", "(iii)") carries no year and is still
+# excluded.
+RE_SHORT_WORD = re.compile(r"[A-Za-z]{3,}")
+RE_YEAR = re.compile(r"\b\d{4}\b")
+
+
+def looks_like_citation(text: str) -> bool:
+    """Whether a fragment is a citation *attempt*, regardless of validity.
+
+    Shape only. Deciding whether the attempt is supported or fabricated belongs
+    to verify_citations, which is the only place that knows what was supplied.
+    Conflating the two is how a fabrication becomes invisible.
+    """
+    if not text or NON_CITATION.match(text):
+        return False
+    if RE_HAS_WORD.search(text) or RE_LOCATOR.search(text):
+        return True
+    return bool(RE_SHORT_WORD.search(text) and RE_YEAR.search(text))
+
 # "p. 1, p. 2, p. 4" and "p. 28-29" are several citations written once. Splitting
 # them measures grounding; leaving them fused measures punctuation.
 RE_REPEATED_PAGE = re.compile(r",\s*(?=p\.\s*\d)", re.I)
@@ -112,35 +134,49 @@ def extract_citations(answer: str) -> list[str]:
     out: list[str] = []
     for match in RE_BRACKETED.finditer(answer or ""):
         inner = match.group(1).strip()
-        if not inner or NON_CITATION.match(inner):
-            continue
-        if not (RE_HAS_WORD.search(inner) or RE_LOCATOR.search(inner)):
+        if not looks_like_citation(inner):
             continue
         out.extend(_expand(inner))
     return out
 
 
-RE_SOURCES_HEADING = re.compile(r"^\s*sources?\s*:?\s*$", re.I)
+# "Sources:" alone on its line, "Sources: CBA 1995, p. 31" with the first
+# reference alongside it, and "**Sources:**" in markdown. The prompt asks for a
+# final line beginning "Sources:" and the model writes all three.
+RE_SOURCES_HEADING = re.compile(r"^\s*[*_#]*\s*sources?\s*[*_]*\s*:\s*(.*)$", re.I)
+# A bullet, or an ordinal like "1." / "2)". Not bare digits: a citation
+# commonly opens with its year, and a greedy class ate the "2023" off
+# "2023 NBA CBA", reporting a fabrication under a name it never used.
+RE_LIST_MARKER = re.compile(r"^(?:[-*\u2022]+|\d+[.)])\s*")
 
 
-def sources_block_citations(answer: str, allowed: set[str]) -> list[str]:
-    """Citations listed under a trailing "Sources:" heading, one per line.
+def extract_sources_block(answer: str) -> list[str]:
+    """Citation attempts listed under a trailing "Sources:" heading.
 
-    Only lines that match a supplied citation exactly are returned. A line that
-    is not one of the citations the model was handed is left alone rather than
-    guessed at: this exists to find references the model really did give, not to
-    manufacture them out of prose.
+    Casual Fan mode puts its references here rather than inline, which
+    CLAUDE.md sec.6 asks for, and writes them unbracketed.
+
+    Every line of citation shape is returned, **including ones that were never
+    supplied**. Filtering to supplied citations here would mean a model listing
+    one real source and two invented ones reported as fully grounded, which is
+    the sec.2.2 failure this module exists to catch, reached from the opposite
+    direction.
     """
     lines = (answer or "").splitlines()
-    start = next((i for i, ln in enumerate(lines) if RE_SOURCES_HEADING.match(ln)), None)
+    out: list[str] = []
+    start = None
+    for i, line in enumerate(lines):
+        if match := RE_SOURCES_HEADING.match(line):
+            start = i
+            first = match.group(1).strip().strip("*_").strip()
+            if looks_like_citation(first):
+                out.append(first)
+            break
     if start is None:
         return []
-    out: list[str] = []
     for line in lines[start + 1:]:
-        candidate = line.strip().lstrip("-*\u2022 ").strip()
-        if not candidate:
-            continue
-        if normalise(candidate) in allowed:
+        candidate = RE_LIST_MARKER.sub("", line.strip()).strip().strip("*_").strip()
+        if looks_like_citation(candidate):
             out.append(candidate)
     return out
 
@@ -174,15 +210,15 @@ def verify_citations(
 
     report = CitationReport()
     citations = extract_citations(answer)
-    if not citations:
-        # Casual Fan mode puts its references on a trailing "Sources:" line
-        # rather than inline, which CLAUDE.md sec.6 asks for explicitly, and in
-        # practice the model writes them as a plain list without brackets. Read
-        # bracketed-only and every casual answer scores as ungrounded: observed
-        # on 5 of 5. Accepting the block is safe because a line is only counted
-        # when it matches a supplied citation exactly, so anything that is not a
-        # citation cannot become one.
-        citations = sources_block_citations(answer, allowed_full | allowed_docs)
+    # A trailing "Sources:" list is the other place a citation can appear, and
+    # the only place Casual Fan mode puts one. A reference repeated there after
+    # being cited inline is one reference written twice, so it is counted once;
+    # a reference that appears only in the list is counted.
+    seen = {normalise(c) for c in citations}
+    for candidate in extract_sources_block(answer):
+        if normalise(candidate) not in seen:
+            seen.add(normalise(candidate))
+            citations.append(candidate)
     for citation in citations:
         key = normalise(citation)
         if key in allowed_full or key in allowed_docs:

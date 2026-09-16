@@ -8,7 +8,12 @@ from __future__ import annotations
 
 import pytest
 
-from src.model.verify import extract_citations, normalise, verify_citations
+from src.model.verify import (
+    extract_citations,
+    extract_sources_block,
+    normalise,
+    verify_citations,
+)
 
 CHUNKS = [
     {"document": "2023 NBA CBA", "article": "II", "section": "7", "page": 37,
@@ -48,7 +53,13 @@ def test_invented_pinpoints_are_caught(answer, invented):
 
 
 def test_bare_document_name_is_weak_but_not_invented():
-    assert verify_citations("Defined in the [2023 NBA CBA].", CHUNKS).ok
+    """Asserting only `.ok` made this vacuous: `ok` is True when nothing is
+    extracted at all, so it passed for two years while the citation was being
+    silently discarded. Assert the citation was actually seen and accepted."""
+    report = verify_citations("Defined in the [2023 NBA CBA].", CHUNKS)
+    assert report.supported == ["2023 NBA CBA"]
+    assert report.total == 1
+    assert report.ok
 
 
 def test_citing_a_real_document_absent_from_context_is_fabrication():
@@ -186,10 +197,13 @@ def test_a_trailing_sources_list_counts_as_citing():
     assert report.ok
 
 
-def test_a_sources_list_cannot_manufacture_a_citation():
-    """Only a line matching a supplied citation exactly is counted. Anything
-    else is left alone rather than guessed at, so prose under the heading cannot
-    become a reference."""
+def test_a_sources_list_of_invented_references_is_reported_as_fabrication():
+    """This test previously asserted the opposite and was wrong.
+
+    It expected invented lines to be silently dropped and the answer flagged as
+    having cited nothing. That reads as the milder failure and hides the worse
+    one: the model did not decline to cite, it cited things it was never given.
+    CLAUDE.md sec.2.2 calls that a fatal system error, so it is named."""
     answer = (
         "The Stepien Rule is named after the owner of a team that traded away "
         "its first round picks for years on end, and the league wrote a rule to "
@@ -200,7 +214,8 @@ def test_a_sources_list_cannot_manufacture_a_citation():
     )
     report = verify_citations(answer, PAGE_ONLY)
     assert report.supported == []
-    assert report.uncited_claim, "an answer resting on nothing must still be flagged"
+    assert report.fabricated == ["A Document Never Supplied, p. 4", "general knowledge"]
+    assert not report.ok, "an answer resting on nothing must still be flagged"
 
 
 def test_inline_citations_are_not_double_counted_with_the_list():
@@ -214,3 +229,77 @@ def test_inline_citations_are_not_double_counted_with_the_list():
     )
     report = verify_citations(answer, PAGE_ONLY)
     assert report.total == 1
+
+
+
+# --- Found by a two-axis code review of the fix above. The first fix cured
+# --- under-reporting by introducing over-reporting, which is the worse error.
+
+def test_a_fabricated_source_in_the_block_is_reported_not_dropped():
+    """The defect the review caught. Filtering the block to supplied citations
+    meant a list of one real and two invented sources reported as fully
+    grounded: CLAUDE.md sec.2.2 calls a hallucinated citation a fatal system
+    error, and this made one invisible."""
+    answer = (
+        "Teams over the second apron lose the ability to trade that pick, and it "
+        "unfreezes only if they drop back under the level in three of the next "
+        "four years, which is a long way back for a contender.\n\n"
+        "Sources:\n"
+        "- 2023 NBA CBA, Article II, Section 7, p. 37\n"
+        "- 2023 NBA CBA, Article IX, p. 999\n"
+        "- general knowledge"
+    )
+    report = verify_citations(answer, CHUNKS)
+    assert report.supported == ["2023 NBA CBA, Article II, Section 7, p. 37"]
+    assert report.fabricated == ["2023 NBA CBA, Article IX, p. 999", "general knowledge"]
+    assert not report.ok
+
+
+@pytest.mark.parametrize("heading", ["Sources:", "sources:", "**Sources:**", "Source:"])
+def test_the_heading_forms_the_model_actually_writes_are_matched(heading):
+    """The prompt asks for a line beginning "Sources:" and the model writes it
+    bare, bolded, singular and with the first reference alongside."""
+    answer = f"{heading}\n- 2023 NBA CBA, Article II, Section 7, p. 37"
+    assert extract_sources_block(answer) == \
+        ["2023 NBA CBA, Article II, Section 7, p. 37"]
+
+
+def test_the_first_reference_may_sit_on_the_heading_line():
+    answer = "Sources: 2023 NBA CBA, Article II, Section 7, p. 37"
+    assert extract_sources_block(answer) == \
+        ["2023 NBA CBA, Article II, Section 7, p. 37"]
+
+
+@pytest.mark.parametrize("marker", ["- ", "* ", "\u2022 ", "1. ", "2) ", ""])
+def test_a_list_marker_is_stripped_without_eating_the_year(marker):
+    """A greedy character class ate the "2023" off "2023 NBA CBA", reporting a
+    fabrication under a document name the model never wrote."""
+    answer = f"Sources:\n{marker}2023 NBA CBA, Article II, Section 7, p. 37"
+    assert extract_sources_block(answer) == \
+        ["2023 NBA CBA, Article II, Section 7, p. 37"]
+
+
+def test_a_reference_both_inline_and_listed_counts_once():
+    answer = (
+        "The maximum is set out in [2023 NBA CBA, Article II, Section 7, p. 37] "
+        "and nothing else in the agreement displaces it for a standard "
+        "contract signed in that year.\n\n"
+        "Sources:\n- 2023 NBA CBA, Article II, Section 7, p. 37"
+    )
+    assert verify_citations(answer, CHUNKS).total == 1
+
+
+def test_a_reference_only_in_the_list_is_still_counted():
+    """The previous gate read the block only when no inline citation existed, so
+    one inline bracket hid every reference the list added."""
+    answer = (
+        "The maximum is set out in [2023 NBA CBA, Article II, Section 7, p. 37] "
+        "and the reserve clause history is summarised separately for the era "
+        "before any agreement survives in public.\n\n"
+        "Sources:\n"
+        "- 2023 NBA CBA, Article II, Section 7, p. 37\n"
+        "- Robertson v. NBA (S.D.N.Y. 1975), part 18"
+    )
+    report = verify_citations(answer, CHUNKS)
+    assert report.total == 2
+    assert len(report.supported) == 2

@@ -22,7 +22,26 @@ is measured, not just the retrieval layer.
   unbracketed, so every casual answer reported "cites nothing". The block is now
   read, and only lines matching a supplied citation exactly are counted.
 
-Both were found by reading transcripts of real sessions. Neither was visible to
+- **A fabricated source inside a "Sources:" block was unreportable.** The first
+  version of the fix above counted only lines matching a supplied citation and
+  silently dropped the rest, so a list of one real and two invented references
+  reported as fully grounded. That cured under-reporting by building in
+  over-reporting, which is the worse error: CLAUDE.md sec.2.2 calls a
+  hallucinated citation a fatal system error, and this made one invisible. The
+  block now returns every citation-shaped line and `verify_citations` classifies
+  it. Found by a two-axis code review, which reached it independently on both
+  axes.
+- A trailing list is now read alongside inline citations rather than only when
+  none exist, deduplicated so a reference written both ways counts once.
+- Heading forms the model actually writes are matched: bare, bolded, singular,
+  and with the first reference on the heading line.
+- A bare document name with a year (`[2023 NBA CBA]`) is no longer discarded.
+  The test that should have caught this asserted only `.ok`, which is true when
+  nothing is extracted at all, so it passed while the citation was dropped.
+- The source preview cuts on any whitespace, not only a space; a passage whose
+  tail was a line break fell back to the mid-word cut the change removed.
+
+Both original defects were found by reading transcripts of real sessions. Neither was visible to
 the test suite, because no test read an answer the way a person does, and because
 the evaluation only ever runs Legal Scholar mode.
 

@@ -17,7 +17,7 @@ _Snapshot; re-generate the numbers with the commands shown._
 | Source-URL checking | `scripts/fetch_corpus.py --check-urls` |
 | Manifest integrity | `tests/test_manifest.py` (44 checks) |
 
-**318 unit tests green in ~23 s** (`make test`) and **43/43 on the evaluation**
+**351 unit tests green in ~24 s** (`make test`) and **43/43 on the evaluation**
 (`make eval`) against the complete 46-document index, with temporal isolation at
 100%, the gate.
 
@@ -101,7 +101,7 @@ A local 7B (`mistral:7b` via Ollama, Q4_K_M) answers end to end on GPU.
 is greedy; llama.cpp's GPU forward pass is not bitwise stable. The same
 five-question batch run twice scored 4/5 then 3/5. So a single run is a sample.
 
-Three full runs over all 43 questions, nothing changed between them:
+Three full runs over all 43 questions on the current code:
 
 ```
 citations   14/26   15/26   14/26        54% - 58%

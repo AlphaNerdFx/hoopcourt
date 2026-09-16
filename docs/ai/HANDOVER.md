@@ -29,7 +29,7 @@ Licence MIT. Dependencies deliberately permissive throughout.
 
 ```
 git       8 commits on master, tagged v0.1.0, nothing pushed, no remote
-tests     318 passing, ruff clean
+tests     351 passing, ruff clean
 eval      43/43, temporal isolation 100% (the gate)
 
 > **Superseded in part, 2026-09-15.** The 8/10 figure quoted below was the
@@ -332,7 +332,7 @@ python scripts/audit_corpus.py     # text layers and fused-word check
 python scripts/build_index.py      # ~80 min on CPU, one-time
 python scripts/seed_concepts.py    # historical analogies
 
-make check                         # lint + 318 tests + eval
+make check                         # lint + 351 tests + eval
 python tests/eval/run_eval.py --db nba_legal.db --with-generation
 uvicorn src.api.main:app --reload
 ```

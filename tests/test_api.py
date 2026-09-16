@@ -226,3 +226,21 @@ def test_a_short_source_excerpt_is_left_alone():
 
     assert _excerpt("Section 6. Minimum Player Salary.") == \
         "Section 6. Minimum Player Salary."
+
+
+def test_excerpt_cuts_on_a_newline_too():
+    """rfind(" ") alone fell back to the blunt mid-word cut whenever the
+    boundary nearest the limit was a line break, which legal text is full of."""
+    from src.api.main import _excerpt
+
+    text = ("word " * 60).strip() + "\n" + "x" * 500
+    assert not _excerpt(text).removesuffix("...").endswith("x")
+
+
+def test_excerpt_keeps_an_unbroken_token_rather_than_gutting_the_preview():
+    """One enormous token with no boundary in the second half: trimming back
+    would discard most of the preview to save a single word."""
+    from src.api.main import EXCERPT_CHARS, _excerpt
+
+    out = _excerpt("y" * 900)
+    assert len(out) > EXCERPT_CHARS // 2

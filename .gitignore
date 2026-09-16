@@ -59,3 +59,9 @@ Thumbs.db
 # not to this repository.
 .agents/
 .claude/
+
+# Pasted UI transcripts. They carry verbatim corpus text, so they are content,
+# not instructions, and sec.7.1 keeps content out of this repository. One was
+# committed by a `git add -A` and had to be removed.
+Prompts and Responses.txt
+*transcript*.txt

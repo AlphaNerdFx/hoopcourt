@@ -238,7 +238,7 @@ Superseded from the original sequence:
 * **Step 9 (Streamlit OCR UI)**, cut; with no OCR it guards an empty queue.
 
 Measured status: 43/43 on the evaluation with temporal isolation at 100%, the
-gate; 333 unit tests green; index 46 documents (18 PDFs, 7 opinions, 21 timeline
+gate; 351 unit tests green; index 46 documents (18 PDFs, 7 opinions, 21 timeline
 entries) / 5,725 chunks / 0 orphaned vectors. The 43/43 is measured against
 recall terms tightened in D18: four checks had been passing on terms appearing in
 49-95% of the expected document and could not fail.

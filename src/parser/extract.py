@@ -86,6 +86,28 @@ def _clean(text: str) -> str:
     return text
 
 
+# A line carrying no letter or digit at all is not text in any document: it is
+# a scanner artefact, a rule, or a decorative separator. Measured across the
+# shipped index, this removes 171 lines, 138 of them in CBA 1995, whose scan
+# leaves marks like ",----," and "~. ,.)" mid-page. The longest removed line is
+# '""\'--.:;.....---...........', and nothing removed is prose.
+#
+# The header strip above only ever examined the FIRST line, so debris below it
+# survived into chunk text and was shown to users in source previews. This runs
+# over the whole page.
+#
+# Deliberately narrower than it could be: "84", ";1" and "(a)." all survive,
+# because a bare number can be a real figure in a table and "(a)." is
+# enumeration the citation logic depends on. Removing only what has no
+# alphanumeric character at all cannot eat a word.
+RE_NO_ALNUM = re.compile(r"^[^0-9A-Za-z]+$")
+
+
+def drop_non_text_lines(lines: list[str]) -> list[str]:
+    """Remove lines that contain no letter or digit anywhere."""
+    return [ln for ln in lines if not RE_NO_ALNUM.match(ln.strip())]
+
+
 def _strip_running_header(lines: list[str]) -> tuple[list[str], str | None, str | None]:
     """Remove a leading running header, returning (lines, article, printed_page)."""
     if not lines:
@@ -122,7 +144,7 @@ TEXT_BLOCK_CHARS = 3000
 def extract_text_document(path: str | Path) -> Iterator[ExtractedPage]:
     """Yield synthetic pages for a plain-text source (court opinions)."""
     raw = _clean(pathlib.Path(str(path)).read_text(encoding="utf-8", errors="replace"))
-    paragraphs = [ln for ln in raw.split("\n") if ln.strip()]
+    paragraphs = drop_non_text_lines([ln for ln in raw.split("\n") if ln.strip()])
 
     block: list[str] = []
     size = 0
@@ -159,6 +181,7 @@ def extract_document(pdf_path: str | Path) -> Iterator[ExtractedPage]:
             raw = page.extract_text(x_tolerance=X_TOLERANCE) or ""
             lines = [ln for ln in _clean(raw).split("\n") if ln.strip()]
             lines, header_article, printed = _strip_running_header(lines)
+            lines = drop_non_text_lines(lines)
 
             if header_article:
                 current_article = header_article

@@ -68,3 +68,45 @@ def test_running_header_requires_a_page_number():
 def test_clean_normalises_quotes_and_soft_hyphenation():
     assert _clean("the player’s “Contract”") == "the player's \"Contract\""
     assert _clean("Compen-\nsation") == "Compensation"
+
+
+# --- Scanner debris below the header slot (the CBA 1995 known issue) ---
+
+@pytest.mark.parametrize("debris", [
+    ",----,", "•.~•", "~. ,.)", "--", ",;", ".',", "-;;", "-,",
+    '""\'--.:;.....---...........', "- . .;;",
+])
+def test_scanner_debris_is_removed_anywhere_on_the_page(debris):
+    """The header strip only ever examined the first line, so marks below it
+    reached chunk text and were shown to users in source previews. Measured on
+    the shipped index: 138 such lines in CBA 1995, 20.6% of its chunks."""
+    from src.parser.extract import drop_non_text_lines
+
+    assert drop_non_text_lines([debris]) == []
+
+
+@pytest.mark.parametrize("real", [
+    "(a).", "(i)", "84", ";1", "1.", "Section 6. Minimum Annual Salary.",
+    "Article II", "$247,500",
+])
+def test_anything_carrying_a_letter_or_digit_survives(real):
+    """Deliberately narrower than it could be. A bare number can be a real
+    figure in a table, and "(a)." is enumeration the citation logic depends on;
+    a rule that removed only what has no alphanumeric character cannot eat a
+    word."""
+    from src.parser.extract import drop_non_text_lines
+
+    assert drop_non_text_lines([real]) == [real]
+
+
+def test_body_text_around_debris_is_kept_in_order():
+    from src.parser.extract import drop_non_text_lines
+
+    page = ["Section 6. Minimum Annual Salary.", ",----,",
+            "no Player Contract shall provide for a Salary of less than", "~. ,.)",
+            "the following amounts:"]
+    assert drop_non_text_lines(page) == [
+        "Section 6. Minimum Annual Salary.",
+        "no Player Contract shall provide for a Salary of less than",
+        "the following amounts:",
+    ]

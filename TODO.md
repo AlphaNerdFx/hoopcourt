@@ -80,8 +80,26 @@ architecture. Cheapest value per unit of work in the roadmap.
 - [ ] League history: draft, expansion, franchise moves, labour disputes.
 - [ ] Add a fourth `source_tier` (`historical_record`) rather than overloading
       `timeline`. Narrative record is not a curated claim.
-- [ ] Upgrade medium-confidence timeline entries where a court opinion can
-      replace the league's published history. 8 of 21 currently qualify.
+- [~] Upgrade medium-confidence timeline entries where a court opinion can
+      replace the league's published history. **The "8 of 21 qualify" estimate
+      was wrong and is corrected here**: audited against the indexed opinions,
+      only `aba-merger-completed` has any judicial coverage at all, and it does
+      not support that entry's claims. Robertson v. NBA (1975) establishes that
+      a merger was proposed and enjoined; the entry claims the 1976 completion,
+      four named franchises and a dispersal draft, none of which a 1975 opinion
+      can source. The other seven have zero judicial coverage: "territorial" in
+      Robertson is antitrust market division, and "three point" is "the NBA
+      argues three points".
+- [ ] **Three timeline entries cite sources that do not support them.** Found by
+      audit, pinned by `tests/test_timeline_sources.py` as xfail so the count can
+      only go down. Each needs a human with network access; guessing a
+      replacement URL is the failure this project exists to prevent.
+      - `baa-nbl-merger` (1946-49, league formation) cites the draft-lottery page
+      - `aba-merger-completed` (1976, ABA merger) cites the same lottery page
+      - `shot-clock` says "Rule 7" and links to `rule-no-1-court-dimensions`
+- [ ] `territorial-picks` is sourced to Wikipedia, the only non-primary source
+      among 21. Acceptable only if no court record or official page exists for
+      an extinct practice; say so in the summary if that is the finding.
 
 After each document: temporal isolation must hold at 100%, and
 `scripts/audit_corpus.py` must report no fused text.

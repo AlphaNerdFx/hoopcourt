@@ -28,6 +28,14 @@ is measured, not just the retrieval layer.
 
 ### Fixed
 
+- **Scanner debris reached chunk text and user-facing source previews.** The
+  running-header strip examined only the first line of a page, so marks left by
+  CBA 1995's scan survived mid-page (`,----,`, `~. ,.)`). 89 of that document's
+  432 chunks carried one; 171 lines index-wide, no other document affected. A
+  line with no letter or digit anywhere is not text, so that is the whole rule:
+  `84`, `;1` and `(a).` all survive, because a bare number can be a real figure
+  and the enumeration is what citations resolve against. Inline debris inside
+  lines that also carry words is deliberately left alone.
 - **Citation counts were under-reported in the UI.** A bracket only counted as a
   citation if it held a word of four or more letters, which discarded 8 of the 46
   indexed documents, the 2023 NBA CBA and every historical CBA among them,

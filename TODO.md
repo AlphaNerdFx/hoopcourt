@@ -176,9 +176,14 @@ commercial products whose data `DATA_SOURCES.md` rules out taking.
       Constitution 2024 p85**, not the CBA. Two eval questions now cover it and
       fail 0/2 with the alias file removed.
 
-- [ ] `CBA 1995.pdf` carries OCR debris on a handful of pages (`30 --~;1`).
-      Only the leading header line is stripped, so a second junk line can survive
-      into chunk text. One document; stripping harder risks eating real text.
+- [~] `CBA 1995.pdf` carries OCR debris. **Standalone debris lines are now
+      removed** anywhere on the page, not only in the header slot: 89 of its 432
+      chunks carried one, now 0, and the document was rebuilt.
+      **Inline debris remains** and is not being chased. Marks like `t_ iJ` and
+      `.-- ~` sit inside lines that also carry real words, and every rule tight
+      enough to catch them also drops `(a).`, which is the enumeration citations
+      resolve against. Cosmetic residue is the better trade than a broken
+      citation. Reopen only with a rule measured against the whole index.
 - [ ] The evaluation does not measure ranking quality *within* a document. A
       defect once fused 35% of CBA 2017 into noise and the suite still reported
       full marks. Run `audit_corpus.py` after touching any document.

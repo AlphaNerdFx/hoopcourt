@@ -555,3 +555,37 @@ free agent*?", smuggling the governing term into the question, so it never
 tested the nickname. A question written by someone who knows the answer can
 encode the answer. The two questions added here ask the way a person asks, and
 they fail 0/2 with the alias file removed.
+
+---
+
+## D20, The primary-key filter is not portable, which strengthens D2
+
+D2 recorded that the specification's era filter, constraining the vec0 PRIMARY
+KEY through a subquery, is applied after `k` and therefore returns zero rows
+when another era dominates the ranking. That measurement was correct and is
+still reproducible: SQLite 3.37.2 with sqlite-vec v0.1.9 returns 0 rows.
+
+It is not universal. The first CI run this repository has ever executed failed
+the characterisation test on **the same sqlite-vec version**, returning 5 rows.
+The variable is the SQLite build underneath: a newer query planner pushes the
+`chunk_id IN (...)` constraint into the virtual-table scan, so the specification's
+form happens to work there.
+
+**This makes the case for the metadata column stronger, not weaker.** The
+original argument was "the PK form is broken". The accurate argument is worse
+for the PK form: *whether it works depends on which SQLite the user happens to
+have*. A project whose central guarantee is that a 1975 question never sees 2023
+text cannot have that guarantee vary by interpreter build. Era isolation has to
+hold on the oldest SQLite a user might run, and the metadata column holds on
+every build tested.
+
+The characterisation test was rewritten to match. It now records which behaviour
+the local SQLite exhibits and prints it, while a second test asserts the thing
+that must be true everywhere: the metadata-column filter returns rows, and every
+row belongs to the requested era. Demanding one planner behaviour made the suite
+fail on a correct system.
+
+**The general lesson.** A characterisation test pins behaviour you do not
+control. When it fails, the first question is whether the world changed or the
+test was over-specified. Here it was over-specified: it asserted a symptom
+(zero rows) rather than the property that mattered (isolation holds regardless).

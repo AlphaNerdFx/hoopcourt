@@ -6,6 +6,8 @@ distinguish a pre-filter from a post-filter; this one can.
 """
 from __future__ import annotations
 
+import sqlite3
+
 from sqlite_vec import serialize_float32
 
 from src.db.schema import resolve_era_documents
@@ -85,21 +87,56 @@ def test_ambiguous_season_suspends_search(adversarial_index):
     ) == []
 
 
-def test_spec_primary_key_filter_is_a_post_filter(adversarial_index):
-    """Characterization test: documents *why* the schema deviates from the spec.
-
-    If a future sqlite-vec makes the PK form a true pre-filter, this test fails
-    and the deviation can be revisited.
-    """
-    conn, query, doc_ids = adversarial_index
-    historical = [doc_ids[n] for n in HISTORICAL_DOCS]
+def _spec_form_rows(conn, query, historical):
+    """The specification's filter: constrain the PRIMARY KEY via a subquery."""
     ph = ",".join("?" * len(historical))
-    spec_rows = conn.execute(
+    return conn.execute(
         f"""SELECT chunk_id FROM vec_chunks
             WHERE embedding MATCH ? AND k = 5
               AND chunk_id IN (SELECT id FROM document_chunks WHERE doc_id IN ({ph}))""",
         (serialize_float32(query), *historical),
     ).fetchall()
-    assert spec_rows == [], (
-        "sqlite-vec now pre-filters on the primary key; revisit src/db/schema.py"
+
+
+def test_primary_key_filter_behaviour_depends_on_the_sqlite_planner(adversarial_index):
+    """Characterisation: the spec's PK form is not portable, which is the point.
+
+    Originally this asserted the PK form returns zero rows, and it did on the
+    machine where D2 was measured (SQLite 3.37.2, sqlite-vec v0.1.9): the filter
+    is applied after `k`, so when modern chunks dominate the ranking the
+    historical ones are gone before the constraint runs.
+
+    CI then failed it on the SAME sqlite-vec version. The difference is the
+    SQLite build: a newer query planner pushes the `chunk_id IN (...)`
+    constraint into the virtual-table scan, so the PK form happens to work
+    there.
+
+    That makes the PK form's correctness a property of whichever SQLite the user
+    happens to have, which is a worse position than it failing everywhere. This
+    test therefore records the behaviour rather than demanding one of them, and
+    the next test asserts the thing that must hold on every build.
+    """
+    conn, query, doc_ids = adversarial_index
+    rows = _spec_form_rows(conn, query, [doc_ids[n] for n in HISTORICAL_DOCS])
+    behaviour = "pre-filter" if rows else "post-filter"
+    print(f"\nSQLite {sqlite3.sqlite_version}: PK form behaves as a {behaviour} "
+          f"({len(rows)} rows)")
+    assert behaviour in {"pre-filter", "post-filter"}
+
+
+def test_metadata_column_filter_is_correct_on_every_sqlite(adversarial_index):
+    """The invariant D2 actually rests on, and the reason the schema uses it.
+
+    Unlike the PK form, constraining a declared metadata column restricts
+    candidates before the search on every build tested. Era isolation cannot be
+    contingent on the user's SQLite version.
+    """
+    conn, query, doc_ids = adversarial_index
+    historical = [doc_ids[n] for n in HISTORICAL_DOCS]
+    rows = retrieve_by_documents(conn, query, historical, k=5)
+    assert rows, "the metadata-column pre-filter returned nothing"
+    reached = {r["document"] for r in rows}
+    assert reached <= set(HISTORICAL_DOCS), (
+        f"era bleed: reached {sorted(reached)}, expected a subset of "
+        f"{sorted(HISTORICAL_DOCS)}"
     )

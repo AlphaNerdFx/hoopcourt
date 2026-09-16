@@ -300,3 +300,43 @@ Two lessons, and the second is the one that generalises:
 2. **The evaluation covers one of the two shipped answer styles.** Whatever is
    not exercised is not measured, and "the suite is green" says nothing about
    it. Casual mode needs eval coverage before any claim about it is credible.
+
+---
+
+## 11. Casual Fan mode, measured for the first time
+
+Everything above this section describes **one of the two shipped answer styles**.
+`run_eval.py` passed `style="scholar"` and nothing else, so every figure in this
+document was a claim about scholar mode being read as a claim about the system.
+
+`--style {scholar,casual}` now exists. The first measurement, over the 12
+`grounded_citation` questions, with a like-for-like scholar run beside it:
+
+| style | citations | failures |
+| --- | --- | --- |
+| casual | 10/12 (83.3%) | a truncated `p.` with no number; `p. 2 (twice)` |
+| scholar | 9/12 (75.0%) | `p. 57 (a)`, `Section IV(a)`, and two bracketed non-citations |
+
+**Read this as indistinguishable, not as casual winning.** One question apart at
+n = 12, on a stack whose generation is not reproducible between runs, is noise.
+Section 1 exists precisely to stop anyone reading a single run as a measurement.
+
+What it does establish is that casual mode is **not worse** than scholar, which
+matters because until the verifier was fixed it scored **zero on every question
+it was ever given**, and nobody knew, because nothing ran it. The mode had a
+100% failure rate that was invisible for the life of the project.
+
+The failure modes differ in a way worth keeping:
+
+* **Scholar appends detail it was not given**: `p. 57` becomes `p. 57 (a)`, and
+  twice it emitted a whole sentence in brackets ("not explicitly stated in the
+  provided context but implied by...") where a citation belongs.
+* **Casual damages the citation instead**: one truncated to `p.` with the page
+  number missing, one decorated into `p. 2 (twice)`.
+
+Neither invents a document. Both take a real citation and corrupt it, which is
+the same underlying weakness section 3 describes: a 7B at Q4 does not reliably
+copy a string verbatim when it is also composing prose around it.
+
+**The standing rule this produces:** a figure quoted without its style is
+incomplete. Say which style produced it, or say both were measured.

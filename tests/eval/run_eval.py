@@ -54,7 +54,7 @@ class Result:
 
 
 def evaluate(db_path: str, questions: list[dict], verbose: bool,
-             generator=None) -> list[Result]:
+             generator=None, style: str = "scholar") -> list[Result]:
     conn = get_vector_db_connection(db_path)
     indexed = {r["doc_name"] for r in conn.execute("SELECT doc_name FROM documents")}
     # The same set the API injects, so the eval exercises the real routing path.
@@ -147,7 +147,7 @@ def evaluate(db_path: str, questions: list[dict], verbose: bool,
                 # the whole run and discard every result already gathered.
                 try:
                     answer = generator.generate(q["question"], chunks, route,
-                                                style="scholar")
+                                                style=style)
                 except Exception as exc:
                     r.check("citations", False,
                             f"generation failed: {type(exc).__name__}")
@@ -229,6 +229,12 @@ def main() -> int:
     ap.add_argument("--verbose", action="store_true")
     ap.add_argument("--with-generation", action="store_true",
                     help="also generate answers and verify their citations")
+    ap.add_argument("--style", choices=("scholar", "casual"), default="scholar",
+                    help="which answer style to generate. Both ship, and for a "
+                         "long time only scholar was ever measured: casual puts "
+                         "its citations in a trailing list rather than inline, "
+                         "and scored zero on every one because nothing read "
+                         "that shape. Measure the one you intend to claim.")
     args = ap.parse_args()
 
     if not Path(args.db).exists():
@@ -254,13 +260,13 @@ def main() -> int:
             print("no generation backend installed; "
                   "pip install -r requirements-local.txt", file=sys.stderr)
             return 2
-        print(f"generation backend: {generator.name}")
+        print(f"generation backend: {generator.name}  style: {args.style}")
 
     if not questions:
         print("no questions selected", file=sys.stderr)
         return 2
     print(f"evaluating {len(questions)} questions against {args.db}")
-    return report(evaluate(args.db, questions, args.verbose, generator))
+    return report(evaluate(args.db, questions, args.verbose, generator, args.style))
 
 
 if __name__ == "__main__":

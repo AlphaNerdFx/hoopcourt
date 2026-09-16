@@ -162,10 +162,14 @@ commercial products whose data `DATA_SOURCES.md` rules out taking.
 
 ## Known issues
 
-- [ ] **The evaluation never runs Casual Fan mode.** `run_eval.py` passes
-      `style="scholar"` only, so half the shipped answer styles is unmeasured.
-      That is how a mode which could never score a single citation survived every
-      run. Add casual coverage before claiming anything about it.
+- [x] **The evaluation can now run Casual Fan mode**, via
+      `run_eval.py --style casual`. First measurement: 10/12 on
+      `grounded_citation`, against 9/12 for scholar on the same questions.
+      Indistinguishable at n=12 on a non-reproducible stack; what it establishes
+      is that casual is not worse, after a 100% failure rate that was invisible
+      for the life of the project because nothing ran it.
+- [ ] Run both styles over all 45 questions, repeated, before quoting a headline
+      figure for either. A citation number without its style is incomplete.
 - [x] "What is the Stepien Rule?" retrieved the Official Rulebook rather than
       the governing passage. Fixed by D19: colloquial names are expanded into
       the corpus's own language for retrieval only. The rule is in **NBA

@@ -25,7 +25,6 @@ uvicorn[standard]~=0.34
 pydantic~=2.10
 
 # --- Testing / eval harness ---
-pytest~=8.3
 pyyaml~=6.0
 
 # -----------------------------------------------------------------------

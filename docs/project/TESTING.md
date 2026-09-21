@@ -11,6 +11,25 @@ them are general good practice quoted from a book; they are scar tissue.
 | Data integrity | every commit, in CI | manifest and timeline YAML only | blocking |
 | Retrieval eval | locally; on a public-domain index in CI at release | a built index | blocking, isolation 100% |
 | Generation eval | locally only | a model and a GPU | manual gate, recorded in the release checklist |
+| Upstream drift | weekly, `.github/workflows/upstream.yml` | a third-party service | blocking on that schedule only |
+
+### The fifth tier reaches the network, deliberately
+
+Everything above is offline. One test is not, and the exception is narrow
+enough to state precisely.
+
+Every test of the local model resolver runs against a snapshot of the Hugging
+Face listing. A snapshot pins our logic and is **structurally blind to the
+upstream repository changing under it**, which is the defect D21 records: the
+default local model named a file that had silently stopped existing, so the
+backend raised on every machine and `build_generator` reported the same
+`generator: null` a machine with no backend reports.
+
+So one test resolves the default quantisation against the live listing. It is
+marked `network`, gated behind `NBA_NETWORK_TESTS`, and excluded from every push
+build, because a third party's availability must not fail an unrelated pull
+request. It runs weekly on a schedule instead. A guard that never runs is not a
+guard, and "opt-in" with nothing opting in is the same thing as deleted.
 
 ### CI cannot test everything, and says so
 

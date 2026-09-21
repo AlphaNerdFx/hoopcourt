@@ -84,8 +84,15 @@ def test_the_default_quantisation_still_exists_upstream():
 
     files = resolve_gguf_files(list_repo_files(DEFAULT_LOCAL_REPO),
                                DEFAULT_LOCAL_QUANT)
-    assert files, f"{DEFAULT_LOCAL_QUANT} no longer resolves in {DEFAULT_LOCAL_REPO}"
-    assert all(name.endswith(".gguf") for name in files)
+    # Assert the observation, not the verdict. `resolve_gguf_files` raises on
+    # failure and returns only non-empty .gguf lists, so `assert files` and
+    # `assert all(endswith(".gguf"))` restate its postconditions and can never
+    # fail. The shard count is the fact that would actually change if Qwen
+    # re-published this quantisation, which is the event this test exists for.
+    assert files == [
+        "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
+        "qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf",
+    ], f"upstream layout for {DEFAULT_LOCAL_QUANT} changed: {files}"
 
 
 def test_the_default_quantisation_resolves_against_the_real_listing():
@@ -230,6 +237,35 @@ def test_both_backends_failing_returns_none_and_says_why(
     assert "ollama unavailable" in caplog.text
     assert "No module named 'llama_cpp'" in caplog.text
     assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+
+def test_both_reasons_survive_at_warning_level(monkeypatch, no_gguf_env, caplog):
+    """The test above forces INFO, which no real deployment does.
+
+    Nothing in src/ configures logging, so logging.lastResort drops everything
+    below WARNING. Under uvicorn an operator saw "no local generation backend"
+    with no trace of whether ollama had been tried, while the test that was
+    supposed to prove otherwise passed because caplog lowered the level for it.
+
+    This captures at WARNING, which is what an operator actually gets.
+    """
+    monkeypatch.setattr(generation, "OllamaGenerator", _unreachable_ollama)
+
+    def no_llama_cpp(*_args, **_kwargs):
+        raise ImportError("No module named 'llama_cpp'")
+
+    monkeypatch.setattr(generation, "LocalGGUFGenerator", no_llama_cpp)
+    with caplog.at_level(logging.WARNING, logger="hoopcourt.generation"):
+        assert build_generator("local") is None
+
+    warnings = [r for r in caplog.records if r.levelno >= logging.WARNING]
+    assert warnings, "nothing reached an operator at all"
+    text = " ".join(r.getMessage() for r in warnings)
+    assert "llama-cpp" in text and "No module named" in text
+    assert "ollama" in text, (
+        "the ollama failure is only logged at INFO, which lastResort drops; "
+        "an operator cannot tell whether it was tried"
+    )
 
 
 def test_an_unrecognised_backend_mode_is_not_silent(caplog):

@@ -1,0 +1,36 @@
+# Upstream drift check.
+#
+# The suite is offline by design, so the one test that can notice Qwen
+# re-publishing a quantisation is opt-in and never runs on a push. A guard that
+# never runs is not a guard: DECISIONS.md D21 exists because the default local
+# model pointed at a filename that had silently stopped existing upstream, and
+# every other test in that file runs against a snapshot which is structurally
+# blind to exactly that.
+#
+# Weekly rather than per-commit, so a third party's availability cannot fail an
+# unrelated pull request.
+name: Upstream
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  quantisation-still-exists:
+    name: The default local model still resolves upstream
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt huggingface-hub~=0.27
+
+      - name: Resolve the default quantisation against Hugging Face
+        env:
+          NBA_NETWORK_TESTS: "1"
+        run: pytest tests/test_local_backend.py -m network -q

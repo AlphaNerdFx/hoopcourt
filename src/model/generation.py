@@ -403,13 +403,22 @@ def build_generator(mode: str | None = None) -> Generator | None:
         except Exception as exc:
             # Expected on a machine that simply has no ollama, so this is not a
             # warning: the fallback below is the documented next step.
+            ollama_exc = exc
             logger.info("ollama unavailable, falling back to llama-cpp "
                         "(%s: %s)", type(exc).__name__, exc)
         try:
             return LocalGGUFGenerator(model_path=os.environ.get("NBA_GGUF_PATH"))
         except Exception as exc:
-            logger.warning("no local generation backend, serving retrieval only "
-                           "(%s: %s)", type(exc).__name__, exc)
+            # Both failed, so the INFO above is the missing half of the story and
+            # nothing will show it: no handler is configured anywhere in src/, so
+            # logging.lastResort drops everything below WARNING. Under uvicorn an
+            # operator saw only "no local generation backend" and could not tell
+            # whether ollama had even been tried. Carry both reasons here.
+            logger.warning(
+                "no local generation backend, serving retrieval only "
+                "(llama-cpp %s: %s; ollama %s: %s)",
+                type(exc).__name__, exc,
+                type(ollama_exc).__name__, ollama_exc)
             return None
 
     logger.warning("BACKEND_MODE %r is not 'local' or 'cloud'; "

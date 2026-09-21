@@ -9,15 +9,19 @@ So the documented default local backend raised `ValueError: No file found`,
 `generator: null` -- exactly what it reports on a machine with no backend
 installed at all.
 
-These tests need no model and no network. The repo listing below is the real
-one, captured from the Hugging Face API, which is the fixture pattern
-docs/project/TESTING.md prescribes for anything that otherwise needs an
-artefact CI cannot have.
+These tests need no model and, with one opt-in exception, no network. The repo
+listing below is the real one, captured from the Hugging Face API, and the
+compiled binding is faked outright -- the fixture pattern
+docs/project/TESTING.md prescribes for anything that otherwise needs an artefact
+CI cannot have. The exception is marked `network` and skipped unless
+`NBA_NETWORK_TESTS` is set, because a snapshot cannot notice upstream moving.
 """
 from __future__ import annotations
 
 import logging
+import os
 import sys
+import types
 import urllib.error
 from pathlib import Path
 
@@ -28,8 +32,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.model import generation  # noqa: E402
 from src.model.generation import (  # noqa: E402
     DEFAULT_LOCAL_QUANT,
+    DEFAULT_LOCAL_REPO,
+    DEFAULT_N_CTX,
+    LocalGGUFGenerator,
     available_quantisations,
     build_generator,
+    download_gguf,
     resolve_gguf_files,
 )
 
@@ -61,9 +69,23 @@ QWEN_LISTING = (
 # The defect itself
 # --------------------------------------------------------------------------
 
-def test_the_repo_has_no_unsharded_q4_k_m():
-    """The premise the old constant rested on, stated so it cannot rot quietly."""
-    assert "qwen2.5-7b-instruct-q4_k_m.gguf" not in QWEN_LISTING
+@pytest.mark.network
+@pytest.mark.skipif(not os.environ.get("NBA_NETWORK_TESTS"),
+                    reason="set NBA_NETWORK_TESTS=1 to query Hugging Face")
+def test_the_default_quantisation_still_exists_upstream():
+    """The only check here that can notice Qwen re-quantising.
+
+    Everything else in this file runs against QWEN_LISTING, which is a snapshot.
+    A snapshot pins our logic and is structurally blind to the upstream change
+    that caused the defect in the first place, so that check has to reach the
+    network. Opt-in, because the rest of the suite is offline by design.
+    """
+    from huggingface_hub import list_repo_files
+
+    files = resolve_gguf_files(list_repo_files(DEFAULT_LOCAL_REPO),
+                               DEFAULT_LOCAL_QUANT)
+    assert files, f"{DEFAULT_LOCAL_QUANT} no longer resolves in {DEFAULT_LOCAL_REPO}"
+    assert all(name.endswith(".gguf") for name in files)
 
 
 def test_the_default_quantisation_resolves_against_the_real_listing():
@@ -214,3 +236,99 @@ def test_an_unrecognised_backend_mode_is_not_silent(caplog):
     with caplog.at_level(logging.WARNING, logger="hoopcourt.generation"):
         assert build_generator("offline") is None
     assert "offline" in caplog.text
+
+
+# --------------------------------------------------------------------------
+# download_gguf and LocalGGUFGenerator, with the hub and the binding faked
+#
+# The build_generator tests above all monkeypatch LocalGGUFGenerator away, so
+# without this section the download path and the constructor would have no
+# coverage at all -- which is how the original defect survived.
+# --------------------------------------------------------------------------
+
+@pytest.fixture
+def fake_hub(monkeypatch):
+    """Stands in for huggingface_hub. Returns the list of files asked for."""
+    requested: list[str] = []
+    module = types.ModuleType("huggingface_hub")
+    module.list_repo_files = lambda repo_id: list(QWEN_LISTING)
+
+    def _hf_hub_download(repo_id, filename):
+        requested.append(filename)
+        return f"/cache/{repo_id.replace('/', '--')}/snapshots/abc123/{filename}"
+
+    module.hf_hub_download = _hf_hub_download
+    monkeypatch.setitem(sys.modules, "huggingface_hub", module)
+    return requested
+
+
+@pytest.fixture
+def fake_llama_cpp(monkeypatch):
+    """Stands in for the compiled binding, which CI does not have at all."""
+    loaded: dict[str, object] = {}
+    module = types.ModuleType("llama_cpp")
+
+    class _Llama:
+        def __init__(self, **kwargs):
+            loaded.update(kwargs)
+
+    module.Llama = _Llama
+    monkeypatch.setitem(sys.modules, "llama_cpp", module)
+    return loaded
+
+
+def test_download_gguf_fetches_every_shard_and_returns_the_first(fake_hub):
+    path = download_gguf(DEFAULT_LOCAL_REPO, DEFAULT_LOCAL_QUANT)
+    # Both, not just the one llama.cpp is handed: it opens the split from shard
+    # 1 and finds the rest by name in the same directory, so a missing shard 2
+    # fails partway through loading rather than at download time.
+    assert fake_hub == [
+        "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
+        "qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf",
+    ]
+    assert path.endswith("qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf")
+
+
+def test_download_gguf_fetches_one_file_for_an_unsplit_quantisation(fake_hub):
+    path = download_gguf(DEFAULT_LOCAL_REPO, "qwen2.5-7b-instruct-q3_k_m")
+    assert fake_hub == ["qwen2.5-7b-instruct-q3_k_m.gguf"]
+    assert path.endswith("qwen2.5-7b-instruct-q3_k_m.gguf")
+
+
+def test_download_gguf_announces_itself_before_blocking_startup(fake_hub, caplog):
+    with caplog.at_level(logging.WARNING, logger="hoopcourt.generation"):
+        download_gguf(DEFAULT_LOCAL_REPO, DEFAULT_LOCAL_QUANT)
+    # build_generator runs inside the API lifespan, so this is several GB
+    # fetched while uvicorn appears to hang. It must not be silent, and it must
+    # name the way out.
+    assert "NBA_GGUF_PATH" in caplog.text
+
+
+def test_a_resolution_failure_stops_before_any_download(fake_hub):
+    with pytest.raises(FileNotFoundError):
+        download_gguf(DEFAULT_LOCAL_REPO, "qwen2.5-7b-instruct-q4_k_s")
+    assert fake_hub == []
+
+
+def test_the_default_generator_loads_the_first_shard(fake_hub, fake_llama_cpp):
+    generator = LocalGGUFGenerator()
+    assert generator.name == (
+        "local:Qwen/Qwen2.5-7B-Instruct-GGUF/qwen2.5-7b-instruct-q4_k_m")
+    assert fake_llama_cpp["model_path"].endswith(
+        "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf")
+    assert fake_llama_cpp["n_ctx"] == DEFAULT_N_CTX
+
+
+def test_an_explicit_model_path_never_reaches_the_hub(fake_llama_cpp, monkeypatch):
+    """NBA_GGUF_PATH means "use this file", not "check upstream first"."""
+    def _no_hub(*_args, **_kwargs):
+        pytest.fail("a local model path must not trigger a repo lookup")
+
+    module = types.ModuleType("huggingface_hub")
+    module.list_repo_files = _no_hub
+    module.hf_hub_download = _no_hub
+    monkeypatch.setitem(sys.modules, "huggingface_hub", module)
+
+    generator = LocalGGUFGenerator(model_path="/models/mine.gguf")
+    assert generator.name == "local:mine.gguf"
+    assert fake_llama_cpp["model_path"] == "/models/mine.gguf"

@@ -28,12 +28,21 @@ is measured, not just the retrieval layer.
   distance 0.189. Expansion is substitution, and applies to the embedded text
   only: the prompt always receives the user's own words.
 - `tests/test_local_backend.py`, the first tests to touch either local
-  generation backend. Fifteen of them, needing no model and no network: the
-  shard resolver runs against the real Hugging Face listing captured as a
-  fixture, and `build_generator`'s backend order, its fallback, its passthrough
-  of `NBA_GGUF_PATH` and what it logs when nothing is available are asserted
-  directly. Mutation-tested per TESTING.md rule 1: restoring the old unsharded
-  filename turns two red, and deleting the llama-cpp fallback turns three red.
+  generation backend. Twenty-one of them, needing no model and (with one opt-in
+  exception) no network: the shard resolver runs against the real Hugging Face
+  listing captured as a fixture, `download_gguf` and the `LocalGGUFGenerator`
+  constructor run with `huggingface_hub` and `llama_cpp` faked as modules so CI
+  exercises them without the binding installed, and `build_generator`'s backend
+  order, its fallback, its passthrough of `NBA_GGUF_PATH` and what it logs when
+  nothing is available are asserted directly.
+  Mutation-tested per TESTING.md rule 1: restoring the old unsharded filename
+  turns two red, deleting the llama-cpp fallback turns three, returning the
+  wrong shard turns two, downloading only shard 1 turns one, and removing the
+  startup warning turns one.
+- A `network` pytest marker, opt-in via `NBA_NETWORK_TESTS`. One test uses it,
+  checking that the default quantisation still resolves against the live
+  Hugging Face listing. Every other test here runs against a snapshot, and a
+  snapshot is structurally blind to upstream moving, which is the whole of D21.
 - A **Generation backends** section in the README: the three backends, what
   each needs installed, the environment variables that configure them, the size
   and timing of the default model's first run, and the measured CPU latency.

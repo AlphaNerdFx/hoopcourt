@@ -13,4 +13,8 @@ testpaths = ["tests"]
 addopts = "-q"
 markers = [
     "corpus: needs the real corpus, which is gitignored and absent in CI",
+    # Opt-in via NBA_NETWORK_TESTS. The suite is offline by design, but a
+    # snapshot fixture cannot notice an upstream repository changing under it,
+    # which is exactly the defect DECISIONS.md D21 records.
+    "network: reaches a third-party service; skipped unless NBA_NETWORK_TESTS",
 ]

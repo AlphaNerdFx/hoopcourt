@@ -589,3 +589,84 @@ fail on a correct system.
 control. When it fails, the first question is whether the world changed or the
 test was over-specified. Here it was over-specified: it asserted a symptom
 (zero rows) rather than the property that mattered (isolation holds regardless).
+
+---
+
+## D21, A quantisation is not a filename, and a swallowed exception hid it
+
+`DEFAULT_LOCAL_FILE` named `qwen2.5-7b-instruct-q4_k_m.gguf`. No such file has
+ever existed. `Qwen/Qwen2.5-7B-Instruct-GGUF` publishes whole files only up to
+q3_k_m; from q4_0 upwards every quantisation is split, and q4_k_m exists solely
+as `...-q4_k_m-00001-of-00002.gguf` and `...-00002-of-00002.gguf`. So the
+default local backend named in CLAUDE.md sec. 3 raised, on every machine, from
+the commit that introduced it:
+
+```
+ValueError: No file found in Qwen/Qwen2.5-7B-Instruct-GGUF
+that match qwen2.5-7b-instruct-q4_k_m.gguf
+```
+
+**Two failures, and the second is the one worth recording.** The first is a
+wrong constant, which is ordinary. The second is that nothing could report it.
+`build_generator` caught `Exception` and returned `None`; `/health` then
+reported `generator: null`, which is also exactly what it reports on a machine
+with no generation backend installed at all. A null generator is a *supported*
+state here: retrieval is the part that has to be right and the API still answers
+with cited sources (D16). That design is correct, and it is precisely what made
+the defect invisible. A user without Ollama saw a system that looked configured
+as documented, with a backend that had never once loaded.
+
+**Why `Llama.from_pretrained` is no longer used.** It matches the
+filename with one `fnmatch` and insists on exactly one hit, so the unsharded
+name raises `No file found` and the glob `...-q4_k_m*.gguf` raises `Multiple
+files found`. It does accept `additional_files`, so it can be made to work by
+naming shard 1 as the filename and shard 2 as an extra. That puts the upstream
+split layout into two constants in this repo, where a re-quantisation upstream
+breaks it again, silently, in the same way.
+
+**The fix.** Resolution moved here. `resolve_gguf_files` matches a quantisation
+*stem* against the repository listing and returns either the single file or
+every shard in load order; an incomplete split is refused rather than
+half-downloaded, because a lone shard 1 is a file llama.cpp opens and then fails
+partway through loading. The constant is now `DEFAULT_LOCAL_QUANT`, a
+quantisation, which is the thing a person actually chooses. Every failure in
+`build_generator` is logged with the backend and the cause.
+
+**Measured, 2026-09-21, on a clean virtualenv built without
+`--system-site-packages`:** `requirements-local.txt` installs at exit 0.
+`llama-cpp-python` 0.3.35 is sdist-only on PyPI, so it always compiles, but it
+needs **no cmake on the host**: `scikit-build-core` pulls cmake and ninja as
+PEP-517 build dependencies into the isolated build environment, and a C/C++
+compiler is the real prerequisite. Build takes about seven minutes on twelve
+cores. Total footprint is 1.4 GB alongside the CPU build of torch, which is the
+same figure as `requirements.txt` alone; the binding itself is ~40 MB.
+With Ollama pointed at a refused port, `build_generator` falls through to
+`LocalGGUFGenerator` in both configurations:
+
+* **`NBA_GGUF_PATH` set** to a 3B on disk: app startup 32s, `/health` reports
+  the loaded model, and `/query` answers in 110-175s with five retrieved chunks.
+  A 2023 query still returned 409 and the Stepien question still reached NBA
+  Constitution 2024 p85, so routing and D19 are unaffected by the backend.
+* **Nothing set**, the default: both shards resolved, 4.68 GB fetched in 768s
+  (3.99 + 0.69), model loaded, and `build_generator` returned
+  `local:Qwen/Qwen2.5-7B-Instruct-GGUF/qwen2.5-7b-instruct-q4_k_m`. One chunk
+  in, 76s to a correct answer citing `[2023 NBA CBA, Article II, Section 7,
+  p. 37]`, exactly the citation it was handed. Loading the cached 4 GB file
+  again on a cold page cache cost 438s, so startup is slow on every run here,
+  not only the first.
+
+These are the degraded CPU figures CLAUDE.md sec. 3.1 warns about rather than a
+fault, and the two models are not comparable to each other: different sizes,
+different context.
+
+**One regression the fix introduces.** `build_generator` runs inside the API's
+lifespan. Before, a machine with no Ollama and no `NBA_GGUF_PATH` failed in
+about a second and served retrieval only. Now it downloads several GB while
+`uvicorn` appears to hang. `download_gguf` therefore logs at warning level
+before fetching, naming the size and the `NBA_GGUF_PATH` escape.
+
+**The general lesson.** TESTING.md rule 4 says what is not exercised is not
+measured. It was written about evaluation styles; it applies with equal force to
+install paths and to backends. And an `except Exception` that a documented
+feature depends on has to say what it caught, or the feature's absence is
+indistinguishable from its being switched off.

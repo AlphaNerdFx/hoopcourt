@@ -83,6 +83,35 @@ and guessing would produce a confident wrong answer. Asking about a season no
 document covers returns nothing and says so, which is the correct outcome rather
 than a failure.
 
+## Generation backends
+
+Retrieval works with no model installed at all: the API returns cited passages
+and `/health` reports `generator: null`. Prose answers need one of three
+backends, and `BACKEND_MODE=local` (the default) tries the first two in order.
+
+| | Install | Configure |
+| --- | --- | --- |
+| **Ollama** | `ollama pull mistral:7b` | `NBA_OLLAMA_MODEL`, `NBA_OLLAMA_URL` |
+| **llama-cpp** | `pip install -r requirements-local.txt` | `NBA_GGUF_PATH` |
+| **Anthropic** | `pip install -r requirements-cloud.txt` | `BACKEND_MODE=cloud`, `ANTHROPIC_API_KEY` |
+
+Ollama is preferred because it needs no compiler and manages weights and memory
+itself. The llama-cpp backend compiles from source, which needs a C/C++ compiler
+but **not** cmake on the host, and adds about 40 MB. With no `NBA_GGUF_PATH` it
+downloads Qwen2.5-7B-Instruct at q4_k_m, 4.7 GB across two shards, on first use,
+and it does that **during startup**, so the server will sit there for ten
+minutes or more saying nothing except the warning it logs first. Point
+`NBA_GGUF_PATH` at a `.gguf` you already have to skip it entirely.
+
+CPU inference is slow, which is the degraded performance the hardware profile
+warns about rather than a fault. Measured on this project's reference machine
+(WSL2, no GPU offload): a 3B answered `/query` in **110-175 seconds** over five
+retrieved chunks, and the default 7B took **76 seconds** on a single chunk after
+a **438-second** load. Those two are not comparable to each other.
+
+If neither backend can be built, the reason is logged rather than swallowed, so
+stderr will name which one failed and why.
+
 ## How the era isolation works
 
 `sqlite-vec` offers two ways to constrain a KNN search, and only one of them is

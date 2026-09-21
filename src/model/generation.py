@@ -23,9 +23,11 @@ Backends are chosen by a one-method protocol:
 from __future__ import annotations
 
 import json
+import logging
 import os
+import re
 import sqlite3
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import Any, Protocol
 
 from src.model.prompt_templates import build_messages
@@ -60,8 +62,18 @@ OLLAMA_RETRY_ATTEMPTS = 3
 OLLAMA_RETRY_BACKOFF = (10.0, 30.0)
 
 DEFAULT_LOCAL_REPO = "Qwen/Qwen2.5-7B-Instruct-GGUF"
-DEFAULT_LOCAL_FILE = "qwen2.5-7b-instruct-q4_k_m.gguf"
+# A quantisation *stem*, deliberately not a filename. The constant this replaced
+# was "qwen2.5-7b-instruct-q4_k_m.gguf", and no such file has ever existed in
+# that repo: Qwen publishes single files only up to q3_k_m, and everything from
+# q4_0 upwards is split. See resolve_gguf_files for why neither spelling of a
+# split model reaches a model through Llama.from_pretrained.
+DEFAULT_LOCAL_QUANT = "qwen2.5-7b-instruct-q4_k_m"
 DEFAULT_CLOUD_MODEL = "claude-opus-5"
+
+logger = logging.getLogger("hoopcourt.generation")
+
+# `<stem>-00001-of-00002.gguf`: llama.cpp's own split naming, five digits each.
+_GGUF_SHARD = re.compile(r"^(?P<stem>.+)-(?P<index>\d{5})-of-(?P<total>\d{5})\.gguf$")
 
 
 class Generator(Protocol):
@@ -191,26 +203,121 @@ class OllamaGenerator:
             f"last error {type(last).__name__}: {last}") from last
 
 
+def available_quantisations(names: Iterable[str]) -> set[str]:
+    """The quantisation stems a repo listing offers, shards collapsed to one.
+
+    Only used to make a resolution failure actionable: the useful thing to print
+    when a quantisation has gone away is which ones are there instead.
+    """
+    stems: set[str] = set()
+    for name in names:
+        if not name.endswith(".gguf"):
+            continue
+        match = _GGUF_SHARD.match(name)
+        stems.add(match.group("stem") if match else name[: -len(".gguf")])
+    return stems
+
+
+def resolve_gguf_files(names: Iterable[str], quant: str) -> list[str]:
+    """Pick the file(s) holding one quantisation out of a repo listing.
+
+    A GGUF quantisation is not reliably one file, and this project shipped for
+    its whole life assuming it was. The official Qwen2.5-7B-Instruct-GGUF repo
+    publishes no `qwen2.5-7b-instruct-q4_k_m.gguf` at all; that quantisation
+    exists only as `...-00001-of-00002.gguf` and `...-00002-of-00002.gguf`.
+
+    `Llama.from_pretrained` matches with one `fnmatch` and insists on exactly
+    one hit, so it accepts neither natural spelling: the unsharded name raises
+    `ValueError: No file found` and the glob `...-q4_k_m*.gguf` raises
+    `ValueError: Multiple files found`. Its `additional_files` argument can be
+    made to work, but only by naming shard 1 as the filename and shard 2 as an
+    extra, which writes the upstream split layout into constants here -- where a
+    re-quantisation upstream breaks it again in exactly the same silent way.
+    Resolving against the listing instead keeps the constant a quantisation,
+    which is the thing a person actually chooses.
+
+    Returned in load order. llama.cpp opens a split model from its first shard
+    and finds the rest by name in the same directory, so every shard has to be
+    present and the caller wants the first one's path.
+    """
+    listing = list(names)
+    exact = f"{quant}.gguf"
+    if exact in listing:
+        return [exact]
+
+    shards: dict[int, str] = {}
+    totals: set[int] = set()
+    for name in listing:
+        match = _GGUF_SHARD.match(name)
+        if match is None or match.group("stem") != quant:
+            continue
+        shards[int(match.group("index"))] = name
+        totals.add(int(match.group("total")))
+
+    if not shards:
+        raise FileNotFoundError(
+            f"no GGUF for quantisation {quant!r}; the listing offers "
+            f"{sorted(available_quantisations(listing))}")
+    if len(totals) > 1:
+        raise FileNotFoundError(
+            f"{quant!r} is split inconsistently: its shards disagree about the "
+            f"total, claiming {sorted(totals)}")
+    (total,) = totals
+    missing = [i for i in range(1, total + 1) if i not in shards]
+    if missing:
+        # Downloading shard 1 alone produces a file llama.cpp opens and then
+        # fails on partway through loading, which is a worse error than this.
+        raise FileNotFoundError(
+            f"{quant!r} is missing shard(s) {missing} of {total}; a partial "
+            f"split will not load")
+    return [shards[i] for i in range(1, total + 1)]
+
+
+def download_gguf(repo_id: str = DEFAULT_LOCAL_REPO,
+                  quant: str = DEFAULT_LOCAL_QUANT) -> str:
+    """Fetch every file of `quant` from `repo_id`; return the first shard's path.
+
+    Each call is a no-op once the files are in the Hugging Face cache, so this
+    is a download on first use and a lookup afterwards.
+
+    That first use is announced at warning level on purpose. `build_generator`
+    is called from the API's lifespan, so on a machine with no Ollama and no
+    `NBA_GGUF_PATH` this is 4.7 GB fetched while `uvicorn` appears to hang with
+    nothing on stdout -- measured at 768 seconds here. Before the shard fix the
+    same configuration failed in about a second, so silence used to be
+    survivable and now is not.
+    """
+    from huggingface_hub import hf_hub_download, list_repo_files
+
+    files = resolve_gguf_files(list_repo_files(repo_id), quant)
+    logger.warning(
+        "fetching %s from %s (%d file%s) if not already cached; the first run "
+        "downloads several GB and startup will block until it finishes. Set "
+        "NBA_GGUF_PATH to a local .gguf to skip this.",
+        quant, repo_id, len(files), "" if len(files) == 1 else "s")
+    # Every shard lands in the same snapshot directory, which is exactly where
+    # llama.cpp looks for the ones after the first.
+    paths = [hf_hub_download(repo_id=repo_id, filename=name) for name in files]
+    return paths[0]
+
+
 class LocalGGUFGenerator:
     """Local llama-cpp backend. Works on CPU with no CUDA toolchain (slowly)."""
 
     def __init__(self, model_path: str | None = None,
                  repo_id: str = DEFAULT_LOCAL_REPO,
-                 filename: str = DEFAULT_LOCAL_FILE,
+                 quant: str = DEFAULT_LOCAL_QUANT,
                  n_ctx: int = DEFAULT_N_CTX,
                  n_gpu_layers: int = -1):
         from llama_cpp import Llama
 
         if model_path:
-            self._llm = Llama(model_path=model_path, n_ctx=n_ctx,
-                              n_gpu_layers=n_gpu_layers, verbose=False)
             self._name = os.path.basename(model_path)
         else:
-            self._llm = Llama.from_pretrained(
-                repo_id=repo_id, filename=filename, n_ctx=n_ctx,
-                n_gpu_layers=n_gpu_layers, verbose=False,
-            )
-            self._name = f"{repo_id}/{filename}"
+            model_path = download_gguf(repo_id, quant)
+            self._name = f"{repo_id}/{quant}"
+        self._llm = Llama(model_path=model_path, n_ctx=n_ctx,
+                          n_gpu_layers=n_gpu_layers, verbose=False)
 
     @property
     def name(self) -> str:
@@ -268,6 +375,12 @@ def build_generator(mode: str | None = None) -> Generator | None:
 
     Returning None is a supported state: the API answers with sources and
     ``grounded`` set, and simply omits the prose answer.
+
+    Every failure on the way there is logged, because the silence cost this
+    project a defect. A backend that could not be built was indistinguishable
+    from no backend being configured -- both returned None and ``/health``
+    reported ``generator: null`` either way -- which is how the default model
+    constant spent the whole project naming a file that does not exist upstream.
     """
     mode = (mode or os.environ.get("BACKEND_MODE", "local")).lower()
 
@@ -275,7 +388,9 @@ def build_generator(mode: str | None = None) -> Generator | None:
         try:
             return AnthropicGenerator(
                 os.environ.get("NBA_CLOUD_MODEL", DEFAULT_CLOUD_MODEL))
-        except Exception:
+        except Exception as exc:
+            logger.warning("cloud backend unavailable, serving retrieval only "
+                           "(%s: %s)", type(exc).__name__, exc)
             return None
 
     if mode == "local":
@@ -285,10 +400,18 @@ def build_generator(mode: str | None = None) -> Generator | None:
             return OllamaGenerator(
                 os.environ.get("NBA_OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL),
                 os.environ.get("NBA_OLLAMA_URL", DEFAULT_OLLAMA_URL))
-        except Exception:
-            pass
+        except Exception as exc:
+            # Expected on a machine that simply has no ollama, so this is not a
+            # warning: the fallback below is the documented next step.
+            logger.info("ollama unavailable, falling back to llama-cpp "
+                        "(%s: %s)", type(exc).__name__, exc)
         try:
             return LocalGGUFGenerator(model_path=os.environ.get("NBA_GGUF_PATH"))
-        except Exception:
+        except Exception as exc:
+            logger.warning("no local generation backend, serving retrieval only "
+                           "(%s: %s)", type(exc).__name__, exc)
             return None
+
+    logger.warning("BACKEND_MODE %r is not 'local' or 'cloud'; "
+                   "generation disabled", mode)
     return None

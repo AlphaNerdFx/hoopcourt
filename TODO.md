@@ -49,13 +49,22 @@ Nothing below this line is required to make that true.
       application ever being launched. Launching it found three defects in ten
       minutes (`make serve` broken, `/query` 500 on a backend hiccup, and a
       virtualenv that resolves most dependencies from `~/.local`). Before 1.0.0:
-      - [ ] Create a virtualenv **without** system site packages, `pip install
+      - [x] Create a virtualenv **without** system site packages, `pip install
             -r requirements.txt`, and confirm every entry point runs from it.
-      - [ ] Follow README Quick start start to finish on a machine that has
+      - [x] Follow README Quick start start to finish on a machine that has
             never built this, as a person who is not its author.
-      - [ ] Launch the server and exercise every response shape by hand: a
+      - [x] Launch the server and exercise every response shape by hand: a
             normal answer, a 409 ambiguous year, an uncovered era, a refusal,
             and a backend that is switched off mid-session.
+      - [x] **`requirements-local.txt`, the llama-cpp backend.** Verified
+            2026-09-21 on its own clean virtualenv: installs at exit 0, builds
+            from sdist in ~7 minutes with no cmake on the host, 1.4 GB total
+            with CPU torch and no CUDA packages. With Ollama pointed at a
+            refused port, `build_generator` falls through to it, `/health`
+            reports the loaded model and `/query` answers in 110-175s on CPU.
+            It also found the defect in DECISIONS D21: the default model
+            constant named a file that does not exist upstream, so this backend
+            had never loaded for anyone who did not set `NBA_GGUF_PATH`.
       - [ ] Only then tag 1.0.0.
 
 ### Housekeeping before v1.0

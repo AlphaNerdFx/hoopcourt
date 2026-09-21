@@ -15,8 +15,21 @@
 #    memory maps and evicts, so it works where a direct load does not.
 #
 # 2. llama-cpp-python (fallback, compiles from source)
-#    Needs cmake and a C toolchain. CPU build works with no CUDA.
+#    PyPI ships it as an sdist only, so this always compiles. It needs a C/C++
+#    compiler and nothing else: cmake does NOT have to be installed on the host,
+#    because scikit-build-core pulls cmake and ninja into the isolated PEP-517
+#    build environment itself. Measured on a clean virtualenv, 2026-09-21: about
+#    seven minutes on twelve cores, ~40 MB added, no CUDA packages, exit 0.
+#    The CPU build works with no CUDA toolchain, slowly -- 110-175s per answer
+#    on this project's reference machine, which is the degraded performance
+#    CLAUDE.md sec. 3.1 warns about rather than a fault.
 #    For CUDA: CMAKE_ARGS="-DGGML_CUDA=on" pip install -r requirements-local.txt --no-cache-dir
+#
+#    The default model, Qwen2.5-7B-Instruct at q4_k_m, is fetched on first use.
+#    Upstream publishes that quantisation as a two-part split rather than one
+#    file, which is why this project resolves the shards itself instead of
+#    calling Llama.from_pretrained (DECISIONS.md D21). Set NBA_GGUF_PATH to a
+#    .gguf you already have to skip the download entirely.
 -r requirements.txt
 llama-cpp-python~=0.3
 huggingface-hub~=0.27

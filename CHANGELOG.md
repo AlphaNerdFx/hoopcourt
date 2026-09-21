@@ -27,6 +27,17 @@ is measured, not just the retrieval layer.
   named Official 2025-26 Rulebook. It now reaches NBA Constitution 2024 p85 at
   distance 0.189. Expansion is substitution, and applies to the embedded text
   only: the prompt always receives the user's own words.
+- `tests/test_local_backend.py`, the first tests to touch either local
+  generation backend. Fifteen of them, needing no model and no network: the
+  shard resolver runs against the real Hugging Face listing captured as a
+  fixture, and `build_generator`'s backend order, its fallback, its passthrough
+  of `NBA_GGUF_PATH` and what it logs when nothing is available are asserted
+  directly. Mutation-tested per TESTING.md rule 1: restoring the old unsharded
+  filename turns two red, and deleting the llama-cpp fallback turns three red.
+- A **Generation backends** section in the README: the three backends, what
+  each needs installed, the environment variables that configure them, the size
+  and timing of the default model's first run, and the measured CPU latency.
+  None of that was written down anywhere a user would look.
 - Two evaluation questions covering colloquial phrasing. The suite already had a
   `bird-rights` question that passed while the nickname failed, because it asks
   "Bird rights *for a qualifying veteran free agent*" and so smuggles the
@@ -104,6 +115,38 @@ is measured, not just the retrieval layer.
   tail was a line break fell back to the mid-word cut the change removed.
 
 Both original defects were found by reading transcripts of real sessions.
+
+- **The default local model named a file that does not exist.**
+  `DEFAULT_LOCAL_FILE` was `qwen2.5-7b-instruct-q4_k_m.gguf`, and
+  `Qwen/Qwen2.5-7B-Instruct-GGUF` has never published it: whole files stop at
+  q3_k_m and q4_k_m ships as a two-part split. So the llama-cpp backend
+  documented in CLAUDE.md sec. 3 raised `ValueError: No file found` on every
+  machine, `build_generator` swallowed it, and `/health` reported
+  `generator: null` -- identical to a machine with no backend installed. The
+  constant is now `DEFAULT_LOCAL_QUANT`, a quantisation rather than a filename,
+  and `resolve_gguf_files` matches it against the repository listing, returning
+  one file or every shard in load order and refusing an incomplete split.
+  `Llama.from_pretrained` is no longer used: it matches with a single `fnmatch`
+  and rejects both spellings of a split model. See DECISIONS.md D21.
+- **`build_generator` now says which backend failed and why.** Every path
+  through it logged nothing, so a misconfigured backend and an absent one were
+  the same observation. That silence is how the defect above survived the whole
+  project.
+- The first verification of `requirements-local.txt` and the llama-cpp backend,
+  on a virtualenv built without `--system-site-packages`. It installs at exit 0;
+  `llama-cpp-python` is sdist-only so it always compiles, but it needs **no
+  cmake on the host**, because `scikit-build-core` supplies cmake and ninja to
+  its own PEP-517 build environment. About seven minutes on twelve cores, ~40 MB
+  added, 1.4 GB total alongside the CPU build of torch, no CUDA packages.
+  `requirements-local.txt` said "Needs cmake and a C toolchain"; the C toolchain
+  is the real prerequisite and the note was corrected. Both configurations were
+  then exercised with Ollama pointed at a refused port: a local `.gguf` via
+  `NBA_GGUF_PATH`, and the default, which fetched both Qwen shards and answered
+  citing exactly the passage it was handed. Numbers in DECISIONS.md D21.
+- `download_gguf` warns before fetching. `build_generator` runs in the API's
+  lifespan, so the shard fix turned "no backend, fails in a second, serves
+  retrieval" into "downloads 4.7 GB while uvicorn appears to hang". The warning
+  names the size and the `NBA_GGUF_PATH` escape.
 
 ### Security
 

@@ -17,14 +17,18 @@ _Snapshot; re-generate the numbers with the commands shown._
 | Source-URL checking | `scripts/fetch_corpus.py --check-urls` |
 | Manifest integrity | `tests/test_manifest.py` (44 checks) |
 
-**351 unit tests green in ~24 s** (`make test`) and **43/43 on the evaluation**
-(`make eval`) against the complete 46-document index, with temporal isolation at
-100%, the gate.
+**460 tests collected, 456 passing in ~28 s** (`make test`) against the complete
+46-document index, and **45/45 on the evaluation** (`make eval`) with temporal
+isolation at 100%, the gate. Without the index 431 pass and 26 skip; one test is
+an opt-in network check and three are deliberate xfails, each a timeline entry
+whose source needs a human with network access to replace.
 
-Read 43/43 with one caveat: four recall checks were passing on terms that appear
+Read 45/45 with one caveat: four recall checks were passing on terms that appear
 in half to nearly all of the expected document, so they could not fail. They were
 tightened, which dropped the suite to 41/43 and exposed a real retrieval defect
-(D18). The 43/43 below is measured **after** that fix, against the harder terms.
+(D18). The evaluation held 43 questions at that point; D19 added two
+colloquial-phrasing questions, taking it to 45. The figure below is measured
+**after** both changes, against the harder terms.
 
 ```
 CATEGORY                 PASS  TOTAL   RATE
@@ -101,7 +105,10 @@ A local 7B (`mistral:7b` via Ollama, Q4_K_M) answers end to end on GPU.
 is greedy; llama.cpp's GPU forward pass is not bitwise stable. The same
 five-question batch run twice scored 4/5 then 3/5. So a single run is a sample.
 
-Three full runs over all 43 questions on the current code:
+Three full runs over all 43 questions, measured before D19 added the two
+colloquial-phrasing questions. The generation figure has not been re-measured
+over all 45, and TESTING.md rule 5 says a figure is a range with a named style,
+so read this as Legal Scholar mode over 43:
 
 ```
 citations   14/26   15/26   14/26        54% - 58%

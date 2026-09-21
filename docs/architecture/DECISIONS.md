@@ -489,7 +489,8 @@ containing one near-universal term cannot fail, so it asserted nothing, and a
 question whose answer was never retrieved still scored as recalled. Those four
 were tightened to discriminative terms (each under 30%, most under 3%), which
 dropped the suite to 41/43 and exposed the defect. With D18 it is 43/43 against
-the harder terms.
+the harder terms. (The evaluation held 43 questions when this was measured. D19
+added two colloquial-phrasing questions, so the same suite now reads 45/45.)
 
 This is the blind spot `docs/operations/STATUS.md` had already warned about,
 caught in the act: a green evaluation meant routing was right and nothing bled
@@ -508,7 +509,7 @@ broadcasts and forums. Where those vocabularies share no words **and** no
 semantic bridge, retrieval does not degrade, it fails outright: the query
 embedding has nothing to be near.
 
-**Measured.** Ten common NBA terms appear in **0 of 5,725 chunks**, including
+**Measured.** Ten common NBA terms appear in **0 of 5,724 chunks**, including
 "Bird rights", "luxury tax", "hard cap" and "supermax". That count alone is not
 the criterion, because the embedding model bridges most of them unaided: asked
 on the shipped index, "luxury tax" reaches "Tax Level" at rank 3, "hard cap"
@@ -519,7 +520,7 @@ Two did fail completely:
 
 | question | before | after |
 | --- | --- | --- |
-| "What is the Stepien Rule?" | not in top 5 | rank 2, top hit d=0.189 |
+| "What is the Stepien Rule?" | not in top 5 | rank 1, d=0.189 |
 | "What are Bird rights?" | not in top 5 | rank 1 |
 
 The Stepien case shows the mechanism clearly. "Stepien" is a surname the model

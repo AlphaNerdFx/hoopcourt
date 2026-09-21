@@ -27,11 +27,11 @@ aliases:
       trade or exchange its right to select a player in the first round of
       consecutive NBA Drafts
     evidence: >-
-      "Stepien" appears in 0 of 5,725 chunks. The rule is NBA Constitution 2024
+      "Stepien" appears in 0 of 5,724 chunks. The rule is NBA Constitution 2024
       p85, which never names it. Worse, the query's remaining word "Rule"
       collides with the document named "Official 2025-26 Rulebook", so the top
       five were all playing rules about flopping and jump balls. Asked
-      descriptively, the Constitution passage ranks 1st at distance 0.276.
+      descriptively, the Constitution passage ranks 1st at distance 0.189.
 
   - term: "Bird rights"
     also: ["Larry Bird rights", "Bird exception", "Bird Rights"]
@@ -39,7 +39,7 @@ aliases:
       Qualifying Veteran Free Agent re-signing with his prior Team using the
       exception that allows a Team Salary above the Salary Cap
     evidence: >-
-      "Bird rights" appears in 0 of 5,725 chunks and neither does "Larry Bird".
+      "Bird rights" appears in 0 of 5,724 chunks and neither does "Larry Bird".
       The governing term is "Qualifying Veteran Free Agent", which shares no
       word with the nickname, and "Bird" embeds toward the animal. Retrieval
       returned 2023 CBA passages that never define the exception.

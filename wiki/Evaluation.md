@@ -4,7 +4,7 @@
 python tests/eval/run_eval.py --db nba_legal.db
 ```
 
-43 labelled questions across four categories. Every assertion is checkable
+45 labelled questions across four categories. Every assertion is checkable
 without an LLM, so the suite runs offline, free, and on CPU.
 
 | Category | Asserts |

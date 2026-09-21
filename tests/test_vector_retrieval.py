@@ -98,7 +98,8 @@ def _spec_form_rows(conn, query, historical):
     ).fetchall()
 
 
-def test_primary_key_filter_behaviour_depends_on_the_sqlite_planner(adversarial_index):
+def test_primary_key_filter_behaviour_depends_on_the_sqlite_planner(
+        adversarial_index, record_property):
     """Characterisation: the spec's PK form is not portable, which is the point.
 
     Originally this asserted the PK form returns zero rows, and it did on the
@@ -117,11 +118,36 @@ def test_primary_key_filter_behaviour_depends_on_the_sqlite_planner(adversarial_
     the next test asserts the thing that must hold on every build.
     """
     conn, query, doc_ids = adversarial_index
-    rows = _spec_form_rows(conn, query, [doc_ids[n] for n in HISTORICAL_DOCS])
+    historical = [doc_ids[n] for n in HISTORICAL_DOCS]
+    rows = _spec_form_rows(conn, query, historical)
     behaviour = "pre-filter" if rows else "post-filter"
-    print(f"\nSQLite {sqlite3.sqlite_version}: PK form behaves as a {behaviour} "
-          f"({len(rows)} rows)")
-    assert behaviour in {"pre-filter", "post-filter"}
+
+    # record_property reaches the report even under `-q`. The `print` this
+    # replaced did not, so the observation the test exists to capture was
+    # invisible in every run of it. TESTING.md rule 2.
+    record_property("sqlite_version", sqlite3.sqlite_version)
+    record_property("pk_filter_behaviour", behaviour)
+    record_property("pk_filter_rows", len(rows))
+
+    if rows:
+        # This build pushed the constraint into the virtual-table scan. Then it
+        # has to have pushed it *correctly*. A third outcome -- rows from the
+        # wrong era -- is the bleed D2 exists to prevent and would be worse than
+        # either known behaviour, so it is the thing worth asserting here.
+        ph = ",".join("?" * len(historical))
+        allowed = {r[0] for r in conn.execute(
+            f"SELECT id FROM document_chunks WHERE doc_id IN ({ph})", historical)}
+        leaked = {r[0] for r in rows} - allowed
+        assert not leaked, (
+            f"PK form acted as a pre-filter but leaked chunks {sorted(leaked)} "
+            f"from outside the requested era")
+    else:
+        # This build applied `k` first. That reading only means anything if the
+        # search can find historical chunks at all, so pin the fixture: the
+        # metadata form, same connection, same query, must return them.
+        assert retrieve_by_documents(conn, query, historical, k=5), (
+            "the PK form returned nothing and so did the metadata form, so this "
+            "is a broken fixture rather than a post-filter")
 
 
 def test_metadata_column_filter_is_correct_on_every_sqlite(adversarial_index):

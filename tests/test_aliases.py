@@ -3,7 +3,7 @@
 The corpus is contract English; users ask in the language of broadcasts. Where
 the two share no words *and* no semantic bridge, retrieval fails outright:
 measured on the shipped index, "What is the Stepien Rule?" returned five playing
-rules about flopping and jump balls, because "Stepien" appears in 0 of 5,725
+rules about flopping and jump balls, because "Stepien" appears in 0 of 5,724
 chunks and the remaining word "Rule" matches a document named "Official 2025-26
 Rulebook".
 """

@@ -32,34 +32,51 @@ def entries() -> list[dict]:
 # Audited 2026-09-16. Each needs a source that supports its claim; none can be
 # corrected without fetching and reading a replacement, and guessing a URL is
 # the failure this project exists to prevent.
-KNOWN_BAD = {
-    "baa-nbl-merger": "cites the draft-lottery page for a 1946-49 league-formation claim",
-    "aba-merger-completed": "cites the draft-lottery page for a 1976 merger claim",
+# Split by the test each one actually fails. A single shared list was applied to
+# both tests, so `baa-nbl-merger` was xfailed on the rule-number check it would
+# have passed -- an exemption from a check it did not need.
+KNOWN_BAD_RULE_NUMBER = {
     "shot-clock": "citation names Rule 7, source_url points at rule-no-1",
 }
+KNOWN_BAD_LOTTERY_SOURCE = {
+    "baa-nbl-merger": "cites the draft-lottery page for a 1946-49 league-formation claim",
+    "aba-merger-completed": "cites the draft-lottery page for a 1976 merger claim",
+}
+KNOWN_BAD = {**KNOWN_BAD_RULE_NUMBER, **KNOWN_BAD_LOTTERY_SOURCE}
+
+
+def _params(known_bad: dict[str, str]):
+    """Every entry, with the known-bad ones marked `xfail(strict=True)`.
+
+    This was `pytest.xfail(...)` called inside the test body, which aborts the
+    test immediately and therefore can never xpass. A *fixed* entry stayed
+    reported as xfailed for ever, so the list the module docstring says "can
+    only go down" had no way to notice it should. `strict=True` turns a fix into
+    a failure that names the entry to remove.
+    """
+    for entry in entries():
+        reason = known_bad.get(entry["id"])
+        marks = [pytest.mark.xfail(strict=True, reason=reason)] if reason else []
+        yield pytest.param(entry, marks=marks, id=entry["id"])
 
 RE_RULE_IN_CITATION = re.compile(r"\bRule\s+(\d+)\b", re.I)
 RE_RULE_IN_URL = re.compile(r"rule-no-(\d+)")
 
 
-@pytest.mark.parametrize("entry", entries(), ids=lambda e: e["id"])
+@pytest.mark.parametrize("entry", _params(KNOWN_BAD_RULE_NUMBER))
 def test_a_cited_rule_number_matches_the_url_it_links_to(entry):
     """"Rule 7" beside a link to rule-no-1 is a reader following a citation to
     the wrong rule."""
-    if entry["id"] in KNOWN_BAD:
-        pytest.xfail(KNOWN_BAD[entry["id"]])
     cited = RE_RULE_IN_CITATION.search(str(entry.get("citation", "")))
     linked = RE_RULE_IN_URL.search(str(entry.get("source_url", "")))
     if cited and linked:
         assert cited.group(1) == linked.group(1)
 
 
-@pytest.mark.parametrize("entry", entries(), ids=lambda e: e["id"])
+@pytest.mark.parametrize("entry", _params(KNOWN_BAD_LOTTERY_SOURCE))
 def test_a_league_history_claim_does_not_link_to_a_lottery_page(entry):
     """A page about the draft lottery cannot be the source for a league merger.
     Five entries share that URL; three are genuinely about the lottery."""
-    if entry["id"] in KNOWN_BAD:
-        pytest.xfail(KNOWN_BAD[entry["id"]])
     url = str(entry.get("source_url", ""))
     topic = str(entry.get("topic", "")).lower()
     if "lottery" in url and topic in {"league formation", "aba merger"}:

@@ -3,6 +3,13 @@
 Everything a new contributor, human or model, needs to pick this up cold.
 Written 2026-09-07 at the end of the session that built the project.
 
+> **The numbers in section 2 are a snapshot of 2026-09-07 and are no longer
+> current.** They are kept as written because a handover is a dated record, not
+> a status page. For measured current figures see
+> [STATUS.md](../operations/STATUS.md) and CLAUDE.md sec. 8. As of 2026-09-21:
+> 460 tests collected / 456 passing with the index, evaluation 45/45, index
+> 5,724 chunks. The prose below remains accurate; only the counts have moved.
+
 ---
 
 ## 1. What this is

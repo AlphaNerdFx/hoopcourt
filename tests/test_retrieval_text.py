@@ -9,7 +9,7 @@ Measured before this existed: "What was the maximum annual salary a player could
 receive in 2024?" returned five apron and trade worked examples, and Article II
 Section 7, the provision stating the rule, did not appear in the top 5 at all.
 With the year removed it ranks 2nd, and the full evaluation goes from 41/43 to
-43/43 against strictly tightened recall terms.
+45/45 against strictly tightened recall terms.
 """
 from __future__ import annotations
 

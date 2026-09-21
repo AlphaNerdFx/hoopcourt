@@ -187,7 +187,9 @@ The `recall` check had passed anyway, on the term "Salary Cap", which appears in
 49% of the expected document's chunks. Four questions were passing on terms like
 that. Tightening them to discriminative terms exposed a real retrieval defect
 (D18: the query's year was outranking the provision with dated examples of it),
-and fixing that took the suite to 43/43 against the harder terms.
+and fixing that took the suite to 43/43 against the harder terms. The
+evaluation held 43 questions at that point; D19 later added two, taking it to
+45/45.
 
 **What this means for the citation figures above.** They were measured before the
 retrieval fix, so some fraction of the failures were the model correctly
@@ -276,9 +278,12 @@ now qualifies as well; enumeration still does not.
 **Casual Fan mode could never pass.** It puts references on a trailing
 "Sources:" line, which CLAUDE.md sec.6 asks for explicitly, and writes them
 unbracketed. Reading bracketed text only, every casual answer scored as
-ungrounded: **5 of 5** in the transcripts. The block is now read, and a line is
-counted only when it matches a supplied citation exactly, so prose under the
-heading cannot become a reference.
+ungrounded: **5 of 5** in the transcripts. The block is now read, and **every
+line of citation shape is counted, including ones that were never supplied**.
+Filtering to supplied citations here was tried and reverted: it would report a
+model listing one real source and two invented ones as fully grounded, which is
+the sec.2.2 failure this module exists to catch, reached from the other
+direction. See `extract_sources_block` in `src/model/verify.py`.
 
 ### What this did and did not change
 

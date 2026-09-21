@@ -20,7 +20,7 @@ is measured, not just the retrieval layer.
   invites tests written to raise the number rather than to catch a defect.
 - **Colloquial rule names are expanded into the corpus's own language before
   retrieval** (`concept_aliases.yaml`, DECISIONS D19). Ten common NBA terms
-  appear in 0 of 5,725 chunks; the embedding model bridges most of them unaided,
+  appear in 0 of 5,724 chunks; the embedding model bridges most of them unaided,
   but "Stepien Rule" and "Bird rights" failed outright. "What is the Stepien
   Rule?" returned five playing rules about flopping and jump balls, because
   "Stepien" is a surname the model cannot place and "Rule" matches a document
@@ -156,6 +156,48 @@ Both original defects were found by reading transcripts of real sessions.
   lifespan, so the shard fix turned "no backend, fails in a second, serves
   retrieval" into "downloads 4.7 GB while uvicorn appears to hang". The warning
   names the size and the `NBA_GGUF_PATH` escape.
+- **Every published number re-measured, and six of them were wrong.** Found by
+  the two-axis review run before tagging. `CLAUDE.md` said "389 unit tests",
+  `pyproject.toml` said 428, `STATUS.md` and `HANDOVER.md` said 351; the real
+  figure is 460 collected, 456 passing with the index and 431 without it.
+  CLAUDE.md sec. 8 gave both 45/45 and 43/43 in the same paragraph, the second
+  being the question count from before D19 added two. Five files said the index
+  holds 5,725 chunks and one said 5,724; it holds **5,724**. The corpus is
+  **3,320 pages**, not the 3,385 that CLAUDE.md, the README and the wiki
+  claimed, and D3 and STATUS.md had the right figure all along. The Stepien
+  retrieval was published three ways -- "rank 2, top hit d=0.189", "distance
+  0.189", and "ranks 1st at distance 0.276"; re-measured it is **rank 1 at
+  d=0.189**, against five Official 2025-26 Rulebook pages at d>=0.468 without
+  the alias expansion. Historical records keep their original figures and now
+  say which question count they were measured against: a changelog section for
+  a shipped release is a record, not a status page.
+- **The README claimed embedding runs on CPU either way.** It does not.
+  `Embedder` passes `device=None`, so sentence-transformers picks the device and
+  will use CUDA when the default torch wheels have put it there. The
+  install-size advice was right; the reason given for it was false.
+- **`make test` printed no pass or fail count.** The target passed `-q` while
+  `pyproject.toml` already set it in `addopts`, and two of them make `-qq`,
+  which suppresses the summary line entirely. On a project whose own rule is to
+  check the result rather than trust the absence of noise, the headline test
+  command printed dots and nothing else.
+- **`GENERATION_MEASUREMENT.md` documented behaviour that had been reversed.**
+  Section 10 said a line under a "Sources:" heading "is counted only when it
+  matches a supplied citation exactly". That filter was deliberately removed,
+  because it reported a model listing one real source and two invented ones as
+  fully grounded. The document now matches `extract_sources_block`.
+- **Two tests that could not fail.** `test_vector_retrieval.py` asserted
+  `behaviour in {"pre-filter", "post-filter"}`, where `behaviour` came from a
+  two-branch conditional, and sent the observation it exists to capture to
+  `print`, which `-q` swallows. It now records that observation with
+  `record_property` and asserts something real in each branch: a build that
+  pre-filters must not leak a chunk from another era, and a build that
+  post-filters must still reach historical chunks through the metadata form.
+  `test_timeline_sources.py` called `pytest.xfail()` in the test body, which
+  aborts immediately and can never xpass, so a *fixed* entry would have stayed
+  reported as xfailed for ever on a list the module says "can only go down". It
+  is now `xfail(strict=True)`, scoped per check rather than shared, so
+  `baa-nbl-merger` is no longer exempted from a rule-number check it passes.
+  Six xfails become three, and three real checks start running.
 
 ### Security
 

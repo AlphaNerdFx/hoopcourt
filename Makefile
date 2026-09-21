@@ -55,7 +55,11 @@ lint:
 	$(PY) -m ruff check src scripts tests
 
 test:
-	$(PY) -m pytest tests/ -q
+	# No -q here: pyproject already sets it in addopts, and a second one
+	# makes -qq, which suppresses the pass/fail summary entirely. `make test`
+	# printed dots and nothing else, on a project whose own rule is to check
+	# the result rather than trust the absence of noise.
+	$(PY) -m pytest tests/
 
 eval:
 	$(PY) tests/eval/run_eval.py --db $(DB)

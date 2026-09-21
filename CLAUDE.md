@@ -39,7 +39,7 @@ Hoopcourt is an era-agnostic legal NBA expert RAG engine designed to interpret t
 * **Cloud LLM** *(optional, bring-your-own-key, never required)*: `claude-opus-5` (Anthropic API).
 * **Embeddings**: `BAAI/bge-base-en-v1.5` (768 dimensions, MIT). Chosen over `nomic-embed-text-v1.5`, which requires `trust_remote_code=True`, arbitrary code execution at import, in a project whose security posture is about supply-chain integrity, and needs `search_document:`/`search_query:` task prefixes that were never applied.
 * **Text Extraction**: `pdfplumber` (MIT). **No OCR.** All 18 corpus PDFs
-  (3,385 pages) are single-column with usable text layers, including
+  (3,320 pages) are single-column with usable text layers, including
   `CBA 1995.pdf`, whose scan already carries an Acrobat Paper Capture OCR layer.
   `scripts/audit_corpus.py` re-checks this, and also measures fused words per
   page: a document can have a perfect text layer and still extract unusably.
@@ -222,7 +222,7 @@ keeps the CUDA toolchain and the OCR pipeline off the critical path.
 
 ```
 [x] Phase 0: .gitignore before git init (corpus excluded; verified)
-[x] Phase 1: Direct text extraction, 18 PDFs / 3,385 pages   -> src/parser/
+[x] Phase 1: Direct text extraction, 18 PDFs / 3,320 pages   -> src/parser/
 [x] Phase 2: Chunking + embeddings + index population        -> src/ingest/
 [x] Phase 3: Labelled eval set (45 questions) + runner       -> tests/eval/
 [x] Phase 4: FastAPI assembly, token gate, temporal router   -> src/api/
@@ -237,11 +237,15 @@ Superseded from the original sequence:
 * **Step 8 (IPFS/BitTorrent)**, replaced by fetch-and-build (sec. 7.1).
 * **Step 9 (Streamlit OCR UI)**, cut; with no OCR it guards an empty queue.
 
-Measured status: 45/45 on the evaluation with temporal isolation at 100%, the
-gate; 389 unit tests green; index 46 documents (18 PDFs, 7 opinions, 21 timeline
-entries) / 5,724 chunks / 0 orphaned vectors. The 43/43 is measured against
-recall terms tightened in D18: four checks had been passing on terms appearing in
-49-95% of the expected document and could not fail.
+Measured status (2026-09-21): 45/45 on the evaluation with temporal isolation
+at 100%, the gate; 460 tests collected, 456 passing with the index present and
+431 without it, the difference being corpus-dependent tests skipping, plus one
+opt-in network test and three deliberate xfails; index 46 documents (18 PDFs,
+7 opinions, 21 timeline entries) / 5,724 chunks / 0 orphaned vectors. The 45/45
+is measured against recall terms tightened in D18: four checks had been passing
+on terms appearing in 49-95% of the expected document and could not fail. The
+evaluation held 43 questions when D18 was measured; the two colloquial-phrasing
+questions added by D19 took it to 45, which is why older documents say 43/43.
 
 Generation is measured separately and is **not reproducible even at temperature
 0** (llama.cpp's GPU forward pass is not bitwise stable), so it is reported as a

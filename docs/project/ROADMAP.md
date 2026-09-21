@@ -15,10 +15,10 @@ That is the entire claim. It is narrow on purpose. Without a boundary every good
 idea looks equally urgent and nothing can ever be called finished.
 
 Almost all of it exists. Retrieval scores 100% on every check, the evaluation is
-43/43 with temporal isolation as a hard gate, generation runs on GPU through
+45/45 with temporal isolation as a hard gate, generation runs on GPU through
 Ollama, and citations are verified both in the evaluation and at runtime. What is
 missing is a face and an honest number: a thin web UI, and a citation-validity
-figure measured over all 43 questions rather than ten.
+figure measured over all 45 questions rather than ten.
 
 Everything else in this document happens after that ships.
 

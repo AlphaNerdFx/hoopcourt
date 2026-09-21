@@ -22,7 +22,7 @@ build, query, or evaluate.
 
 | Layer | State |
 | --- | --- |
-| Text extraction (18 PDFs + 7 opinions, 3,385 pages) | working |
+| Text extraction (18 PDFs / 3,320 pages, + 7 opinions) | working |
 | Structure-aware chunking with article/section citations | working |
 | Embeddings + `sqlite-vec` index | working |
 | Temporal routing | working, 15/15 on the routing eval |
@@ -31,7 +31,7 @@ build, query, or evaluate.
 | Pre-1995 coverage (opinions + curated timeline) | working, 1946 onward |
 | Generation (Ollama, local GGUF, or optional cloud) | working |
 | Web interface at `/` | working |
-| Citation grounding | 14-15 of 26 typical, see Limitations |
+| Citation grounding | 14-15 of 26, Legal Scholar mode, see Limitations |
 
 ## Quick start
 
@@ -56,10 +56,11 @@ uvicorn src.api.main:app --reload   # http://127.0.0.1:8000
 **Install size.** `sentence-transformers` pulls PyTorch, and PyTorch's default
 wheels carry the full CUDA stack. Measured on a clean virtualenv: **5.8 GB and
 15 NVIDIA packages** by default, against **1.4 GB and none** if you install the
-CPU build of torch first, as above. Embedding runs on CPU either way in this
-project, so the CUDA stack earns nothing unless you separately want GPU
-embeddings. Both were verified against the full evaluation: 45/45, isolation at
-100%.
+CPU build of torch first, as above. `Embedder` passes `device=None`, so
+sentence-transformers picks the device: with the default wheels it will use CUDA
+if it finds it, and with the CPU build there is nothing to find. Install the CPU
+build unless you actually want GPU embeddings. Both were verified against the
+full evaluation: 45/45, isolation at 100%.
 
 The corpus is not in this repository and never will be, see
 [DATA_SOURCES.md](docs/corpus/DATA_SOURCES.md). You download the documents from official and
@@ -67,7 +68,7 @@ public-record sources and build your own index; the project ships instructions
 and checksums, not content.
 
 Building the index is CPU-bound on embedding: roughly **2.5-3 seconds per page**,
-so the full 3,385-page corpus takes a couple of hours. It is a one-time cost, and
+so the full 3,320-page corpus takes a couple of hours. It is a one-time cost, and
 `--only "<doc name>"` rebuilds a single document.
 
 ## Using it
@@ -137,7 +138,7 @@ can be revisited rather than silently outliving its reason.
 
 ## Evaluation
 
-`tests/eval/questions.yaml` holds 43 labelled questions across four categories,
+`tests/eval/questions.yaml` holds 45 labelled questions across four categories,
 temporal isolation, grounded citation, refusal, and trigger routing. Every
 assertion is checkable without an LLM, so the whole suite runs offline and free.
 
@@ -154,7 +155,7 @@ nearest plausible text.
 Stated plainly, because a system about grounding should be honest about its own.
 
 **Retrieval is the strong half.** Routing, era isolation, recall and refusal are
-43/43 across the evaluation, exactly reproducible, and measured without an LLM.
+45/45 across the evaluation, exactly reproducible, and measured without an LLM.
 Temporal isolation is a hard gate: any leak exits non-zero.
 
 **Generation is the weak half, and its number is a range.** Six full runs of

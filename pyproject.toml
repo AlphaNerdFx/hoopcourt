@@ -6,7 +6,7 @@
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# `-q` by default keeps a 428-test run readable. Coverage is reported, never
+# `-q` by default keeps a 460-test run readable. Coverage is reported, never
 # gated: a number that blocks a merge invites tests written to raise the number
 # rather than to catch a defect, and every serious defect in this project so far
 # was in code the suite already covered.

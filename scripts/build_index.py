@@ -96,14 +96,18 @@ def prune_unlisted(conn, manifest: list[dict],
 def build(db_path: str, manifest_path: Path, data_dir: Path,
           only: list[str] | None, max_pages: int | None,
           prune: bool = True, timeline_path: Path | None = None,
-          with_timeline: bool = True) -> int:
+          with_timeline: bool = True, tiers: list[str] | None = None) -> int:
     manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))["documents"]
     full_manifest = manifest
-    if only:
-        wanted = {o.lower() for o in only}
-        manifest = [d for d in manifest if d["doc_name"].lower() in wanted]
+    if only or tiers:
+        wanted = {o.lower() for o in (only or ())}
+        tier_set = set(tiers or ())
+        manifest = [d for d in manifest
+                    if d["doc_name"].lower() in wanted
+                    or (d.get("source_tier") or "primary") in tier_set]
         if not manifest:
-            print(f"no manifest entry matched {only}", file=sys.stderr)
+            print(f"no manifest entry matched only={only} tier={tiers}",
+                  file=sys.stderr)
             return 1
 
     timeline_path = timeline_path or (ROOT / "historical_timeline.yaml")
@@ -206,6 +210,16 @@ def main() -> int:
     ap.add_argument("--manifest", type=Path, default=ROOT / "corpus_manifest.yaml")
     ap.add_argument("--data-dir", type=Path, default=ROOT / "data")
     ap.add_argument("--only", action="append", help="doc_name; repeatable")
+    ap.add_argument("--tier", action="append",
+                    choices=["primary", "judicial", "timeline"],
+                    help="build every document of this source_tier; repeatable. "
+                         "Exists because doc_name carries spaces and parentheses "
+                         "(\"Haywood v. NBA (U.S. 1971)\"), and a caller "
+                         "generating --only flags inside a shell command "
+                         "substitution cannot quote them: the shell does not "
+                         "re-parse quotes it produced itself, so the name word "
+                         "splits into unrecognised arguments. A tier is one "
+                         "token and cannot split.")
     ap.add_argument("--max-pages", type=int, help="cap pages per document (smoke tests)")
     ap.add_argument("--timeline", type=Path, default=ROOT / "historical_timeline.yaml")
     ap.add_argument("--no-timeline", action="store_true",
@@ -215,7 +229,7 @@ def main() -> int:
     args = ap.parse_args()
     return build(args.db, args.manifest, args.data_dir, args.only, args.max_pages,
                  prune=not args.no_prune, timeline_path=args.timeline,
-                 with_timeline=not args.no_timeline)
+                 with_timeline=not args.no_timeline, tiers=args.tier)
 
 
 if __name__ == "__main__":

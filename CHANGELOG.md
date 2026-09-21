@@ -34,6 +34,15 @@ Measured at release:
   sample size. See
   [docs/evaluation/GENERATION_MEASUREMENT.md](docs/evaluation/GENERATION_MEASUREMENT.md).
 
+**One more found while shipping it.** Pushing the tag ran `release.yml` for the
+first time in the project's life, and it failed: the job built its
+public-domain index by generating `--only "Haywood v. NBA (U.S. 1971)"` flags
+inside a shell command substitution, and a shell does not re-parse quotes it
+produced itself, so every document name word-split into unrecognised arguments.
+It had been verified locally with `eval`, which does re-parse them, so the check
+that passed was not the command CI runs. `build_index.py` now takes `--tier`,
+a single token that cannot split.
+
 **Why this is 1.0.0 and 0.9.0 was not.** 1.0.0 was briefly tagged during
 development and demoted, because launching the application for the first time
 found three defects in ten minutes and proved the documented install had never

@@ -40,25 +40,21 @@ jobs:
             || { echo "CHANGELOG.md has no section for ${VERSION}"; exit 1; }
           echo "changelog section found for ${VERSION}"
 
-      - name: Build a public-domain index and run the pre-1995 evaluation
+      - name: Build a public-domain index and run the evaluation
         # Court opinions and the curated timeline are the only sources that can
         # legally be fetched in CI, and they are exactly what covers pre-1995.
-        # This proves a release can still route and isolate the historical era.
+        #
+        # --tier, not a generated list of --only flags. doc_name carries spaces
+        # and parentheses ("Haywood v. NBA (U.S. 1971)"), and quotes produced
+        # inside a command substitution are not re-parsed by the shell, so the
+        # name word split into unrecognised arguments and this job had never
+        # once succeeded. A tier is a single token and cannot split.
         run: |
           python scripts/fetch_opinions.py
-          python scripts/build_index.py --db ci.db \
-            $(python - <<'PY'
-          import yaml
-          docs = yaml.safe_load(open("corpus_manifest.yaml"))["documents"]
-          print(" ".join(f'--only "{d["doc_name"]}"'
-                         for d in docs if d.get("source_tier") == "judicial"))
-          PY
-            )
+          python scripts/build_index.py --db ci.db --tier judicial
           # The whole suite, not one category: temporal isolation is the gate
-          # (docs/project/VERSIONING.md), and running only trigger_routing meant
-          # the gate never ran at release. Questions whose documents are absent
-          # from this public-domain index are skipped rather than failed, which
-          # run_eval.py already handles by recording them as None.
+          # (docs/project/VERSIONING.md). Questions whose documents are absent
+          # from this public-domain index are skipped rather than failed.
           python tests/eval/run_eval.py --db ci.db
 
   publish:

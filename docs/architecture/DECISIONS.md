@@ -73,7 +73,7 @@ wrong top-k in the wrong order, quietly, with no error.
 
 ## D3, No OCR
 
-**Measured** (`scripts/audit_corpus.py`, all 18 documents, 3,320 pages): every
+**Measured** (`scripts/audit_corpus.py`, all 18 documents, 3,385 pages): every
 document has a usable text layer, median 558-4,572 characters per page. Every one
 is single-column.
 

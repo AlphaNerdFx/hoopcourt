@@ -163,8 +163,12 @@ Both original defects were found by reading transcripts of real sessions.
   CLAUDE.md sec. 8 gave both 45/45 and 43/43 in the same paragraph, the second
   being the question count from before D19 added two. Five files said the index
   holds 5,725 chunks and one said 5,724; it holds **5,724**. The corpus is
-  **3,320 pages**, not the 3,385 that CLAUDE.md, the README and the wiki
-  claimed, and D3 and STATUS.md had the right figure all along. The Stepien
+  **3,385 pages**, confirmed twice: `pdfplumber` opened all 18 manifest PDFs and
+  summed their page counts, and `scripts/audit_corpus.py` prints
+  "3,385 PDF pages". An earlier pass through this section briefly changed the
+  figure to 3,320 by trusting D3's stale copy instead of re-running the tool D3
+  cites, which is the reconciliation error the rest of this entry exists to
+  avoid. D3 now carries the verified number. The Stepien
   retrieval was published three ways -- "rank 2, top hit d=0.189", "distance
   0.189", and "ranks 1st at distance 0.276"; re-measured it is **rank 1 at
   d=0.189**, against five Official 2025-26 Rulebook pages at d>=0.468 without

@@ -6,7 +6,7 @@ _Snapshot; re-generate the numbers with the commands shown._
 
 | Capability | Evidence |
 | --- | --- |
-| Text extraction, 18 docs / 3,320 pages, no OCR | `python scripts/audit_corpus.py` |
+| Text extraction, 18 docs / 3,385 pages, no OCR | `python scripts/audit_corpus.py` |
 | Structure-aware chunking with article/section citations | `tests/test_extract.py` |
 | Embeddings + `sqlite-vec` index, cascade-consistent | `tests/test_database_schema.py` |
 | Temporal routing | 12/12, `run_eval.py --category trigger_routing` |
@@ -72,7 +72,7 @@ the rulebook's *"Section II, Starting and Stopping of Shot Clock"* (p. 28).
 
 ## Known rough edges
 
-* **Index builds are slow**, ~2.5-3 s/page on CPU, so the full 3,320-page corpus
+* **Index builds are slow**, ~2.5-3 s/page on CPU, so the full 3,385-page corpus
   takes a couple of hours. One-time; `--only "<doc name>"` rebuilds one document.
 * **Extraction tolerance is tuned corpus-wide** (`X_TOLERANCE = 1.5`). A new
   document with unusually tight or loose kerning may need it revisited,

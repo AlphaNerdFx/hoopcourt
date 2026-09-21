@@ -22,7 +22,7 @@ build, query, or evaluate.
 
 | Layer | State |
 | --- | --- |
-| Text extraction (18 PDFs / 3,320 pages, + 7 opinions) | working |
+| Text extraction (18 PDFs / 3,385 pages, + 7 opinions) | working |
 | Structure-aware chunking with article/section citations | working |
 | Embeddings + `sqlite-vec` index | working |
 | Temporal routing | working, 15/15 on the routing eval |
@@ -68,7 +68,7 @@ public-record sources and build your own index; the project ships instructions
 and checksums, not content.
 
 Building the index is CPU-bound on embedding: roughly **2.5-3 seconds per page**,
-so the full 3,320-page corpus takes a couple of hours. It is a one-time cost, and
+so the full 3,385-page corpus takes a couple of hours. It is a one-time cost, and
 `--only "<doc name>"` rebuilds a single document.
 
 ## Using it

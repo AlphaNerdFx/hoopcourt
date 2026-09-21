@@ -26,7 +26,7 @@ Court opinions are the exception to the effort: they are public domain and
 ## Build time
 
 Indexing is CPU bound on embedding, roughly 2.5 to 3 seconds per page, so the
-full 3,320-page corpus takes a couple of hours. It is a one-time cost, and
+full 3,385-page corpus takes a couple of hours. It is a one-time cost, and
 `--only "<doc name>"` rebuilds a single document.
 
 If you have an NVIDIA GPU and it is not being used, see

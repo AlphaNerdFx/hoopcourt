@@ -65,11 +65,19 @@ Nothing below this line is required to make that true.
             It also found the defect in DECISIONS D21: the default model
             constant named a file that does not exist upstream, so this backend
             had never loaded for anyone who did not set `NBA_GGUF_PATH`.
-      - [ ] Only then tag 1.0.0.
+            **Re-verified 2026-09-22 with a procedure rather than a claim.**
+            The 09-21 tick left no artifact: the tests fake `llama_cpp` and
+            `huggingface_hub` as modules and CI never installs this file, so a
+            reviewer could not falsify it. DECISIONS.md D21 now carries the
+            steps and TESTING.md carries them as a standing manual gate.
+      - [x] Only then tag 1.0.0.
 
 ### Housekeeping before v1.0
 
-- [ ] Push to GitHub; claim `hoopcourt` on Hugging Face and PyPI (both free).
+- [x] Push to GitHub. `AlphaNerdFx/hoopcourt`, private until 1.0.0 ships.
+- [ ] Flip the repository public: `gh repo edit AlphaNerdFx/hoopcourt
+      --visibility public`.
+- [ ] Claim `hoopcourt` on Hugging Face and PyPI (both free).
 - [ ] Push `wiki/` to the separate `.wiki.git` repo, see `wiki/README.md`.
 - [x] `OWNER/REPO` placeholders replaced with `AlphaNerdFx/hoopcourt`.
       Change them if the repo lands elsewhere.

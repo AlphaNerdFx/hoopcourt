@@ -4,10 +4,48 @@ All notable changes to this project are recorded here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-Versions stay below 1.0.0 until a generation backend ships and the answer layer
-is measured, not just the retrieval layer.
+What each version digit means here, and the gates every release passes, are in
+[docs/project/VERSIONING.md](docs/project/VERSIONING.md).
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-09-22
+
+First stable release. An era-aware question answering system over NBA governing
+documents, with verifiable citations, that a person can install and use.
+
+**What 1.0.0 asserts.** The public contract in
+[docs/project/VERSIONING.md](docs/project/VERSIONING.md) is stable, and the
+documented install has been performed rather than assumed. Everything below the
+`Added` heading was already true at 0.9.0; what changed is that it can now be
+demonstrated by someone who is not its author.
+
+Measured at release:
+
+* Retrieval **45/45**, temporal isolation **100%** across 25 queries, which is a
+  hard gate that exits non-zero below it.
+* **461 tests**, ruff clean, CI green on Python 3.10 and 3.12.
+* Index: 46 documents (18 PDFs totalling 3,385 pages, 7 court opinions, 21
+  curated timeline entries), 5,724 chunks, 0 orphaned vectors.
+* Generation is reported as a **range, not a number**, because it is not
+  reproducible on this stack even at temperature 0: three runs of `mistral:7b`
+  in Legal Scholar mode scored 14, 15 and 14 of 26. Casual Fan mode scored 10/12
+  against scholar's 9/12 on the same subset, which is indistinguishable at that
+  sample size. See
+  [docs/evaluation/GENERATION_MEASUREMENT.md](docs/evaluation/GENERATION_MEASUREMENT.md).
+
+**Why this is 1.0.0 and 0.9.0 was not.** 1.0.0 was briefly tagged during
+development and demoted, because launching the application for the first time
+found three defects in ten minutes and proved the documented install had never
+been performed by anyone. Closing that gap found four more: `httpx` undeclared
+so `tests/test_api.py` could not be collected on a clean machine; `fastapi~=0.115`
+unbounded so CI and the developer ran different stacks; `pytest` sitting in the
+runtime requirements; and the install measuring 5.8 GB against a file that
+claimed it "stays small". The last of those blockers, the optional llama-cpp
+backend, was verified on 2026-09-22 and is recorded in DECISIONS.md D21.
+
+A green test suite is not evidence that software runs. That sentence cost this
+release about a week, and it is the most useful thing in this changelog.
 
 ### Added
 
@@ -392,6 +430,7 @@ Defects found in the pre-existing specification, each verified before changing:
 - Extension loading is re-disabled immediately after `sqlite-vec` loads.
 - All SQL values are bound parameters.
 
-[Unreleased]: https://github.com/AlphaNerdFx/hoopcourt/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/AlphaNerdFx/hoopcourt/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/AlphaNerdFx/hoopcourt/compare/v0.9.0...v1.0.0
 [0.9.0]: https://github.com/AlphaNerdFx/hoopcourt/compare/v0.1.0...v0.9.0
 [0.1.0]: https://github.com/AlphaNerdFx/hoopcourt/releases/tag/v0.1.0

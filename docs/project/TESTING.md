@@ -151,6 +151,24 @@ Automated checks cannot cover these. Work through them by hand.
 
 - [ ] Fresh virtualenv created **without** `--system-site-packages`,
       `pip install -r requirements.txt`, and every Makefile target runs from it.
+- [ ] **The optional local backend, which CI can never cover.** CI installs only
+      `requirements.txt`, and `tests/test_local_backend.py` fakes `llama_cpp`
+      and `huggingface_hub` as modules so it passes with neither present. That
+      makes the backend's success unfalsifiable from inside the suite, so it is
+      checked by hand:
+
+      ```bash
+      python3 -m venv /tmp/lv                     # no system site packages
+      /tmp/lv/bin/pip install --no-cache-dir torch \
+          --index-url https://download.pytorch.org/whl/cpu
+      CMAKE_BUILD_PARALLEL_LEVEL=4 \
+          /tmp/lv/bin/pip install --no-cache-dir -r requirements-local.txt
+      ```
+
+      Then, with `NBA_OLLAMA_URL` pointed at a refused port and `NBA_GGUF_PATH`
+      at any real `.gguf`, confirm `build_generator("local")` returns a
+      `local:` backend rather than `None`. A small model is fine; the code path
+      does not vary with size. Last run 2026-09-22, DECISIONS.md D21.
 - [ ] `make audit` passes against the real corpus.
 - [ ] `make eval` passes against the real index, isolation at 100%.
 - [ ] Generation eval, both styles, three runs each. Range recorded.

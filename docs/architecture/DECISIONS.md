@@ -557,6 +557,37 @@ tested the nickname. A question written by someone who knows the answer can
 encode the answer. The two questions added here ask the way a person asks, and
 they fail 0/2 with the alias file removed.
 
+
+### Verified 2026-09-22, which D21 originally could not be
+
+D21 recorded the fix but proved it only in prose, and the tests fake
+`llama_cpp` and `huggingface_hub` as modules so they pass with neither
+installed. That left the central claim unfalsifiable, which is the state
+`docs/project/TESTING.md` exists to prevent.
+
+Performed on a virtualenv built **without** system site packages, against
+`requirements-local.txt`:
+
+* `llama-cpp-python` **compiles on this machine with no system cmake**.
+  scikit-build-core fetches cmake into its own build isolation, so `gcc`, `g++`
+  and `make` are sufficient. `CMAKE_BUILD_PARALLEL_LEVEL=4` keeps the compile
+  inside the 7.4 GB this WSL2 guest actually has. Installed `llama_cpp 0.3.35`.
+* With `NBA_OLLAMA_URL` pointed at a refused port, `build_generator("local")`
+  returns `local:...`, **not `None`**. That is the claim, and it now has a
+  procedure behind it rather than an assertion.
+* `LocalGGUFGenerator` loads a real GGUF, `count_tokens` runs the model's own
+  tokenizer, and `generate` answers from retrieved chunks.
+
+A 0.5B model was used, not the 4.7 GB default quantisation: the code path is
+identical and the smaller download proves the same thing. `resolve_gguf_files`
+is separately checked against the live Hugging Face listing by the `network`
+test, run weekly by `.github/workflows/upstream.yml`.
+
+**What this does not prove.** That answer carried zero citations. A 0.5B model
+is far weaker than the `mistral:7b` every published figure was measured against,
+and no generation number in this repository should be read as applying to it.
+The backend path is proven; the model is not endorsed.
+
 ---
 
 ## D20, The primary-key filter is not portable, which strengthens D2

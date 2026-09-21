@@ -37,6 +37,10 @@ build, query, or evaluate.
 
 ```bash
 python -m venv venv && source venv/bin/activate
+
+# Optional, and worth it unless you want GPU embeddings. See the note below.
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+
 pip install -r requirements.txt
 
 python scripts/fetch_corpus.py      # what to download, and from where
@@ -49,13 +53,21 @@ python tests/eval/run_eval.py       # routing + anti-bleed measurement
 uvicorn src.api.main:app --reload   # http://127.0.0.1:8000
 ```
 
+**Install size.** `sentence-transformers` pulls PyTorch, and PyTorch's default
+wheels carry the full CUDA stack. Measured on a clean virtualenv: **5.8 GB and
+15 NVIDIA packages** by default, against **1.4 GB and none** if you install the
+CPU build of torch first, as above. Embedding runs on CPU either way in this
+project, so the CUDA stack earns nothing unless you separately want GPU
+embeddings. Both were verified against the full evaluation: 45/45, isolation at
+100%.
+
 The corpus is not in this repository and never will be, see
 [DATA_SOURCES.md](docs/corpus/DATA_SOURCES.md). You download the documents from official and
 public-record sources and build your own index; the project ships instructions
 and checksums, not content.
 
 Building the index is CPU-bound on embedding: roughly **2.5-3 seconds per page**,
-so the full 3,412-page corpus takes a couple of hours. It is a one-time cost, and
+so the full 3,385-page corpus takes a couple of hours. It is a one-time cost, and
 `--only "<doc name>"` rebuilds a single document.
 
 ## Using it

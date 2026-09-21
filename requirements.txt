@@ -36,6 +36,12 @@ pyyaml~=6.0
 #   tiktoken        -> OpenAI BPE; wrong tokenizer for both our backends
 #
 # Generation backends are optional and live in separate files so the core
-# install stays small, free, and CPU-only:
+# install stays free of them. "Small" was wishful: sentence-transformers pulls
+# PyTorch, whose default wheels carry the CUDA stack, and a clean virtualenv
+# measures 5.8 GB with 15 NVIDIA packages. Installing the CPU build of torch
+# first brings that to 1.4 GB with none, and the evaluation is 45/45 either way.
+# README Quick start carries the command.
+#
+# Optional generation backends:
 #   requirements-local.txt  -> llama-cpp-python (local GGUF, default)
 #   requirements-cloud.txt  -> anthropic (bring-your-own-key, never required)

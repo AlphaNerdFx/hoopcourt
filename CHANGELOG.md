@@ -35,6 +35,22 @@ is measured, not just the retrieval layer.
 
 ### Fixed
 
+- **The documented install had never been performed, by anyone, once.** The
+  developer virtualenv was created with `--system-site-packages` and resolved
+  fastapi, uvicorn, pdfplumber, yaml, torch and httpx from `~/.local`, so a
+  clean checkout was never exercised. Building the first genuinely isolated
+  virtualenv this project has had found three things: `httpx` was undeclared and
+  `tests/test_api.py` could not even be collected without it; `fastapi~=0.115`
+  permitted any 0.x so CI and the developer machine ran different stacks; and
+  `pytest` sat in the runtime requirements despite nothing in `src/` or
+  `scripts/` importing it.
+- **The install is 5.8 GB, not "small".** `requirements.txt` claimed the core
+  install "stays small, free, and CPU-only". Measured on a clean virtualenv it
+  is 5.8 GB with 15 NVIDIA packages, because `sentence-transformers` pulls
+  PyTorch and PyTorch's default wheels carry the CUDA stack. Installing the CPU
+  build of torch first gives 1.4 GB with none. Both pass the evaluation at 45/45
+  with isolation at 100%. README Quick start now carries the command and the
+  numbers.
 - **The release workflow could not build the public-domain index.** The
   fused-word gate, which exists to catch PDF kerning failures like
   `foreachSeasonoftheContract`, was firing on proper-noun intercaps: a single

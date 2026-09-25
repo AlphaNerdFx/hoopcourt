@@ -23,6 +23,13 @@ What each version digit means here, and the gates every release passes, are in
   fail the load and silently downgrade the gate to the heuristic. Flagged as
   exposure by the v1.0.0 security review; it predated that release.
 
+* **`release.yml` no longer interpolates `github.event.inputs.tag` into a
+  shell command.** A `${{ }}` expression is substituted as text before the shell
+  parses the line, so a `workflow_dispatch` tag carrying shell metacharacters
+  was executed rather than compared. It reaches the script through `env:` now,
+  in **both** steps that used it -- the security review named one. Gated on
+  write access throughout, so this is defence in depth.
+
 ### Tests
 
 * 464 collected, up from 461. Three cover the pins above and were

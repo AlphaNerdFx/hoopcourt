@@ -265,4 +265,7 @@ jobs:
             echo
             echo "A surviving mutant is a change to the source that no test noticed."
             echo "This check reports; it does not block."
-          } >> "$GITHUB_STEP_SUMMARY"
+          # tee, not a plain redirect: the step summary is the readable copy and
+          # the log is the greppable one. Sending it only to the summary made the
+          # counts unreachable from the API on the first real run.
+          } | tee -a "$GITHUB_STEP_SUMMARY"

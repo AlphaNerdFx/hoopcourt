@@ -33,6 +33,7 @@ from src.model import generation  # noqa: E402
 from src.model.generation import (  # noqa: E402
     DEFAULT_LOCAL_QUANT,
     DEFAULT_LOCAL_REPO,
+    DEFAULT_LOCAL_REVISION,
     DEFAULT_N_CTX,
     LocalGGUFGenerator,
     available_quantisations,
@@ -82,8 +83,12 @@ def test_the_default_quantisation_still_exists_upstream():
     """
     from huggingface_hub import list_repo_files
 
-    files = resolve_gguf_files(list_repo_files(DEFAULT_LOCAL_REPO),
-                               DEFAULT_LOCAL_QUANT)
+    # The pinned commit, not `main`. Since DEFAULT_LOCAL_REVISION is what
+    # download_gguf fetches, main drifting is now harmless and the fact worth
+    # checking is that the pin is still resolvable and still holds this layout.
+    files = resolve_gguf_files(
+        list_repo_files(DEFAULT_LOCAL_REPO, revision=DEFAULT_LOCAL_REVISION),
+        DEFAULT_LOCAL_QUANT)
     # Assert the observation, not the verdict. `resolve_gguf_files` raises on
     # failure and returns only non-empty .gguf lists, so `assert files` and
     # `assert all(endswith(".gguf"))` restate its postconditions and can never
@@ -285,13 +290,26 @@ def test_an_unrecognised_backend_mode_is_not_silent(caplog):
 @pytest.fixture
 def fake_hub(monkeypatch):
     """Stands in for huggingface_hub. Returns the list of files asked for."""
-    requested: list[str] = []
-    module = types.ModuleType("huggingface_hub")
-    module.list_repo_files = lambda repo_id: list(QWEN_LISTING)
+    # A list subclass, so the existing `fake_hub == [filenames]` assertions
+    # still read plainly while `.revisions` records what every hub call -- the
+    # listing included -- was pinned to.
+    class _Requests(list):
+        pass
 
-    def _hf_hub_download(repo_id, filename):
+    requested = _Requests()
+    requested.revisions = []
+    module = types.ModuleType("huggingface_hub")
+
+    def _list_repo_files(repo_id, revision=None):
+        requested.revisions.append(revision)
+        return list(QWEN_LISTING)
+
+    def _hf_hub_download(repo_id, filename, revision=None):
         requested.append(filename)
+        requested.revisions.append(revision)
         return f"/cache/{repo_id.replace('/', '--')}/snapshots/abc123/{filename}"
+
+    module.list_repo_files = _list_repo_files
 
     module.hf_hub_download = _hf_hub_download
     monkeypatch.setitem(sys.modules, "huggingface_hub", module)
@@ -323,6 +341,20 @@ def test_download_gguf_fetches_every_shard_and_returns_the_first(fake_hub):
         "qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf",
     ]
     assert path.endswith("qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf")
+
+
+def test_every_hub_call_is_pinned_to_the_same_revision(fake_hub):
+    """Drop `revision=` from either hub call and this goes red.
+
+    Both, because listing `main` and downloading a pinned commit resolves shard
+    names against one tree and fetches them from another -- a pin that still
+    moves. Asserting the recorded revisions rather than "it worked": the fake
+    defaults `revision` to None, so an unpinned call is silently accepted by
+    everything else in this file.
+    """
+    download_gguf()
+    # One listing plus two shards.
+    assert fake_hub.revisions == [DEFAULT_LOCAL_REVISION] * 3
 
 
 def test_download_gguf_fetches_one_file_for_an_unsplit_quantisation(fake_hub):

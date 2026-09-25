@@ -68,6 +68,13 @@ DEFAULT_LOCAL_REPO = "Qwen/Qwen2.5-7B-Instruct-GGUF"
 # q4_0 upwards is split. See resolve_gguf_files for why neither spelling of a
 # split model reaches a model through Llama.from_pretrained.
 DEFAULT_LOCAL_QUANT = "qwen2.5-7b-instruct-q4_k_m"
+# The upstream revision, pinned. Without it hf_hub_download resolves whatever
+# `main` points at when it runs, so a compromise of the Qwen repo -- or an
+# innocent re-publish -- hands llama_cpp several GB of GGUF that nothing here
+# ever measured, and llama_cpp loads it. A commit SHA is the only spelling that
+# cannot move underneath us; a branch or a tag can be repointed in place.
+# Bump it deliberately, re-running the manual gate in docs/project/TESTING.md.
+DEFAULT_LOCAL_REVISION = "bb5d59e06d9551d752d08b292a50eb208b07ab1f"  # 2024-09-20
 DEFAULT_CLOUD_MODEL = "claude-opus-5"
 
 logger = logging.getLogger("hoopcourt.generation")
@@ -274,7 +281,8 @@ def resolve_gguf_files(names: Iterable[str], quant: str) -> list[str]:
 
 
 def download_gguf(repo_id: str = DEFAULT_LOCAL_REPO,
-                  quant: str = DEFAULT_LOCAL_QUANT) -> str:
+                  quant: str = DEFAULT_LOCAL_QUANT,
+                  revision: str = DEFAULT_LOCAL_REVISION) -> str:
     """Fetch every file of `quant` from `repo_id`; return the first shard's path.
 
     Each call is a no-op once the files are in the Hugging Face cache, so this
@@ -289,7 +297,11 @@ def download_gguf(repo_id: str = DEFAULT_LOCAL_REPO,
     """
     from huggingface_hub import hf_hub_download, list_repo_files
 
-    files = resolve_gguf_files(list_repo_files(repo_id), quant)
+    # Both calls take the same revision on purpose. Listing `main` and then
+    # downloading a pinned commit resolves shard names against one tree and
+    # fetches them from another, which is how a pin ends up looking correct
+    # while still moving.
+    files = resolve_gguf_files(list_repo_files(repo_id, revision=revision), quant)
     logger.warning(
         "fetching %s from %s (%d file%s) if not already cached; the first run "
         "downloads several GB and startup will block until it finishes. Set "
@@ -297,7 +309,8 @@ def download_gguf(repo_id: str = DEFAULT_LOCAL_REPO,
         quant, repo_id, len(files), "" if len(files) == 1 else "s")
     # Every shard lands in the same snapshot directory, which is exactly where
     # llama.cpp looks for the ones after the first.
-    paths = [hf_hub_download(repo_id=repo_id, filename=name) for name in files]
+    paths = [hf_hub_download(repo_id=repo_id, filename=name, revision=revision)
+             for name in files]
     return paths[0]
 
 
@@ -307,6 +320,7 @@ class LocalGGUFGenerator:
     def __init__(self, model_path: str | None = None,
                  repo_id: str = DEFAULT_LOCAL_REPO,
                  quant: str = DEFAULT_LOCAL_QUANT,
+                 revision: str = DEFAULT_LOCAL_REVISION,
                  n_ctx: int = DEFAULT_N_CTX,
                  n_gpu_layers: int = -1):
         from llama_cpp import Llama
@@ -314,7 +328,7 @@ class LocalGGUFGenerator:
         if model_path:
             self._name = os.path.basename(model_path)
         else:
-            model_path = download_gguf(repo_id, quant)
+            model_path = download_gguf(repo_id, quant, revision)
             self._name = f"{repo_id}/{quant}"
         self._llm = Llama(model_path=model_path, n_ctx=n_ctx,
                           n_gpu_layers=n_gpu_layers, verbose=False)

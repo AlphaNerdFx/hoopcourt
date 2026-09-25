@@ -20,6 +20,14 @@ from typing import Protocol
 # counts and lets an oversized prompt through.
 HEURISTIC_CHARS_PER_TOKEN = 3.2
 
+# Same reasoning as DEFAULT_LOCAL_REVISION in src/model/generation.py: an
+# unpinned from_pretrained takes whatever `main` holds at call time. The
+# exposure is smaller here -- a tokenizer, not weights, and transformers will
+# not execute code from it without trust_remote_code -- but it is the same hole
+# one file over, and the fix is one argument.
+DEFAULT_LOCAL_TOKENIZER = "Qwen/Qwen2.5-7B-Instruct"
+DEFAULT_LOCAL_TOKENIZER_REVISION = "a09a35458c702b33eeacc393d103063234e8bc28"
+
 
 class TokenCounter(Protocol):
     def count(self, text: str) -> int: ...
@@ -45,9 +53,16 @@ class HFTokenizerCounter:
     gate is exact long before any generation backend is installed.
     """
 
-    def __init__(self, model_id: str, allow_download: bool | None = None):
+    def __init__(self, model_id: str = DEFAULT_LOCAL_TOKENIZER,
+                 allow_download: bool | None = None,
+                 revision: str | None = None):
         from transformers import AutoTokenizer
 
+        # The pin belongs to one repo, so it applies only when that is the repo
+        # asked for. Pinning someone else's model_id to Qwen's SHA would fail
+        # the load and silently downgrade the gate to the heuristic.
+        if revision is None and model_id == DEFAULT_LOCAL_TOKENIZER:
+            revision = DEFAULT_LOCAL_TOKENIZER_REVISION
         if allow_download is None:
             allow_download = os.environ.get(
                 "NBA_ALLOW_TOKENIZER_DOWNLOAD", ""
@@ -57,7 +72,7 @@ class HFTokenizerCounter:
         # ~100s on an offline machine -- for a counter that has a correct,
         # conservative fallback. Downloading is therefore opt-in.
         self._tok = AutoTokenizer.from_pretrained(
-            model_id, local_files_only=not allow_download
+            model_id, revision=revision, local_files_only=not allow_download
         )
         self._model_id = model_id
 
@@ -90,7 +105,7 @@ class AnthropicCounter:
 
 
 def build_counter(backend: str = "auto",
-                  local_model_id: str = "Qwen/Qwen2.5-7B-Instruct",
+                  local_model_id: str = DEFAULT_LOCAL_TOKENIZER,
                   cloud_model: str = "claude-opus-5") -> TokenCounter:
     """Pick the counter matching the configured generation backend.
 

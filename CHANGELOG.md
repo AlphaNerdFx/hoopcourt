@@ -9,6 +9,35 @@ What each version digit means here, and the gates every release passes, are in
 
 ## [Unreleased]
 
+### Security
+
+* **Pinned every Hugging Face fetch to a commit SHA.** `hf_hub_download` and
+  `list_repo_files` resolved whatever `main` held at call time, so a compromise
+  of `Qwen/Qwen2.5-7B-Instruct-GGUF` yielded several GB of GGUF that
+  `llama_cpp` would load, and nothing here had measured it. Both calls now take
+  `DEFAULT_LOCAL_REVISION`; they take the *same* one, because listing `main` and
+  downloading a pinned commit resolves shard names against one tree and fetches
+  them from another, which is a pin that still moves. The tokenizer load in
+  `src/api/tokens.py` is pinned the same way, and only when the model id is the
+  repo the pin belongs to -- pinning someone else's model to Qwen's SHA would
+  fail the load and silently downgrade the gate to the heuristic. Flagged as
+  exposure by the v1.0.0 security review; it predated that release.
+
+* **`release.yml` no longer interpolates `github.event.inputs.tag` into a
+  shell command.** A `${{ }}` expression is substituted as text before the shell
+  parses the line, so a `workflow_dispatch` tag carrying shell metacharacters
+  was executed rather than compared. It reaches the script through `env:` now,
+  in **both** steps that used it -- the security review named one. Gated on
+  write access throughout, so this is defence in depth.
+
+### Tests
+
+* 464 collected, up from 461. Three cover the pins above and were
+  mutation-checked: removing `revision=` from either hub call or from the
+  tokenizer load turns them red. The opt-in network test now resolves the
+  pinned revision rather than `main`, since main drifting is no longer what
+  would break a fetch.
+
 ## [1.0.0] - 2026-09-22
 
 First stable release. An era-aware question answering system over NBA governing

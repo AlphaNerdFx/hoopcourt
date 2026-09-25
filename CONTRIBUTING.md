@@ -13,6 +13,20 @@ The corpus is not in this repository and must not be added to it, see
 [DATA_SOURCES.md](docs/corpus/DATA_SOURCES.md). `.gitignore` excludes `data/`, `*.pdf` and
 `*.db`; please do not weaken those rules.
 
+## Branches and pull requests
+
+`master` is protected: work on a branch and open a pull request. Four checks
+must pass before a merge, and one more reports without blocking. The gates, what
+each measures, and how to raise the benchmark threshold for a change that earns
+it are in [docs/project/BRANCHING.md](docs/project/BRANCHING.md).
+
+Two of them run locally:
+
+```
+python scripts/benchmark.py --out head.json     # then compare against master's
+python scripts/smoke_test.py --db nba_legal.db
+```
+
 ## The one rule that is not negotiable
 
 **Temporal isolation must stay at 100%.** `make eval` exits non-zero on any

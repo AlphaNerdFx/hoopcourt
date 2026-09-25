@@ -1,0 +1,268 @@
+name: PR checks
+
+# The gates a feature branch must clear before it can be merged into master.
+# `ci.yml` stays the normal lint-and-test setup; this file adds the three checks
+# that need a built index, a comparison against the base branch, or both.
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      threshold_pct:
+        description: Benchmark regression threshold, percent
+        required: false
+        default: "30"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The default gate. Override per PR with a `perf-allow:<pct>` label, which is
+  # deliberately visible on the pull request rather than hidden in a commit.
+  DEFAULT_THRESHOLD_PCT: "30"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  integration:
+    name: Integration, eval and smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Cache the embedding model
+        # BAAI/bge-base-en-v1.5 is ~440 MB and is fetched on first use by both
+        # the index build and the smoke test. Without this every run downloads it.
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-bge-base-en-v1.5-v1
+
+      - name: Install
+        # CPU torch first, as README Quick start documents: the default wheels
+        # carry the CUDA stack and measure 5.8 GB against 1.4 GB for this one.
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-dev.txt
+
+      - name: Fetch the public-domain sources
+        # Court opinions and the curated timeline are the only sources CI may
+        # lawfully fetch, and they are exactly what covers pre-1995 (D4, D15).
+        run: python scripts/fetch_opinions.py
+
+      - name: Build a public-domain index
+        # --tier, never a generated list of --only flags: doc_name carries spaces
+        # and parentheses, and quotes produced inside a command substitution are
+        # not re-parsed by the shell. That bug meant the release job had never
+        # once succeeded.
+        run: python scripts/build_index.py --db ci.db --tier judicial
+
+      - name: Evaluation
+        # The whole suite, not one category. Temporal isolation is the gate and
+        # exits non-zero below 100%. Questions whose documents are absent from a
+        # public-domain index are skipped rather than failed.
+        run: python tests/eval/run_eval.py --db ci.db
+
+      - name: API smoke test
+        env:
+          BACKEND_MODE: none   # not 'local': that would try ollama, then llama-cpp
+        run: python scripts/smoke_test.py --db ci.db
+
+      - name: Index integrity
+        run: |
+          python - <<'PY'
+          from src.db.connection import get_vector_db_connection
+          from src.ingest.indexer import index_integrity, text_quality
+          conn = get_vector_db_connection("ci.db")
+          stats = index_integrity(conn)
+          quality = text_quality(conn)
+          print("index:", stats)
+          print("text quality:", {k: v for k, v in quality.items() if k != "by_document"})
+          assert stats["orphaned_vectors"] == 0, stats
+          assert stats["vectors"] == stats["verified_chunks"], stats
+          # A document can have a perfect text layer and still extract unusably.
+          assert quality["fused_pct"] < 1.0, quality
+          PY
+
+  # ---------------------------------------------------------------------------
+  benchmark:
+    name: Benchmark (base vs head)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # the base commit must be reachable
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        # Only what the benchmark imports. It deliberately never touches the
+        # embedding model, so torch is not needed and not installed.
+        run: |
+          python -m pip install --upgrade pip
+          pip install pdfplumber sqlite-vec pyyaml
+
+      - name: Resolve the base commit
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          BASE_SHA="$(git merge-base "origin/$BASE_REF" HEAD)"
+          echo "BASE_SHA=$BASE_SHA" >> "$GITHUB_ENV"
+          echo "Comparing against $BASE_SHA on $BASE_REF"
+
+      - name: Benchmark head
+        run: python scripts/benchmark.py --out "$GITHUB_WORKSPACE/head.json" --label head
+
+      - name: Benchmark base
+        # Base and head are measured on the SAME runner minutes apart, which is
+        # what makes a percentage gate meaningful. Absolute nanoseconds from
+        # different jobs are not comparable.
+        run: |
+          git worktree add /tmp/base "$BASE_SHA"
+          if [ -f /tmp/base/scripts/benchmark.py ]; then
+            (cd /tmp/base && python scripts/benchmark.py \
+               --out "$GITHUB_WORKSPACE/base.json" --label base)
+          else
+            echo "NO_BASE=1" >> "$GITHUB_ENV"
+            echo "The base commit has no scripts/benchmark.py, so there is nothing to compare."
+          fi
+
+      - name: Threshold for this pull request
+        env:
+          # Read through the environment, never interpolated into `run:`. A
+          # ${{ }} expression is substituted as text before the shell parses the
+          # line, so a label containing shell metacharacters would be executed.
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          INPUT_THRESHOLD: ${{ github.event.inputs.threshold_pct }}
+        run: |
+          THRESHOLD="${INPUT_THRESHOLD:-$DEFAULT_THRESHOLD_PCT}"
+          ALLOW="$(printf '%s' "$LABELS" | jq -r \
+            '[.[] | select(startswith("perf-allow:")) | ltrimstr("perf-allow:")] | first // empty')"
+          case "$ALLOW" in
+            '') : ;;
+            *[!0-9.]*) echo "ignoring malformed perf-allow label: $ALLOW" ;;
+            *) THRESHOLD="$ALLOW"
+               echo "perf-allow label raises the threshold to ${THRESHOLD}%" ;;
+          esac
+          echo "BENCH_THRESHOLD_PCT=$THRESHOLD" >> "$GITHUB_ENV"
+
+      - name: Compare
+        run: |
+          if [ -n "${NO_BASE:-}" ]; then
+            echo "### Benchmark" >> "$GITHUB_STEP_SUMMARY"
+            echo "Base commit has no benchmark script; nothing to compare. Head numbers only." \
+              >> "$GITHUB_STEP_SUMMARY"
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          d = json.load(open("head.json"))["benchmarks"]
+          print("\n| Benchmark | Head |\n| --- | ---: |")
+          for k, v in d.items():
+              print(f"| `{k}` | {v['min_ns']:,.0f} ns |")
+          PY
+            exit 0
+          fi
+          python scripts/compare_benchmarks.py base.json head.json \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the numbers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks
+          path: |
+            base.json
+            head.json
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  mutation:
+    name: Mutation (changed files)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Advisory. A passing test suite is evidence only if a realistic change would
+    # make it fail, and three checks in this project could not fail (D18, and the
+    # `assert report.ok` that was true when nothing was extracted). This job
+    # reports the score on what the branch changed; it does not block a merge,
+    # because the absolute score is low enough today that any budget would.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Which source files did this branch change?
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
+        run: |
+          git fetch --no-tags origin "$BASE_REF"
+          BASE_SHA="$(git merge-base "origin/$BASE_REF" HEAD)"
+          CHANGED="$(git diff --name-only --diff-filter=d "$BASE_SHA" HEAD -- 'src/*.py' 'src/**/*.py' | paste -sd, -)"
+          echo "CHANGED_SRC=$CHANGED" >> "$GITHUB_ENV"
+          if [ -z "$CHANGED" ]; then
+            echo "No files under src/ changed; mutation testing has nothing to do."
+          else
+            echo "Mutating: $CHANGED"
+          fi
+
+      - name: Install
+        if: env.CHANGED_SRC != ''
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-dev.txt
+          # 2.5.1, not 3.x: mutmut 3 asserts internally that module names do not
+          # start with `src.`, which every import in this repository does.
+          pip install 'mutmut==2.5.1'
+
+      - name: Coverage map
+        if: env.CHANGED_SRC != ''
+        # --use-coverage below skips mutants on lines no test executes, which is
+        # the difference between minutes and hours.
+        run: pytest tests/ -q --cov=src --cov-report= || true
+
+      - name: Mutate
+        if: env.CHANGED_SRC != ''
+        # Time-boxed on purpose: the job reports what it got through rather than
+        # running to completion, because a full run is unbounded.
+        run: |
+          timeout 900 mutmut run \
+            --paths-to-mutate "$CHANGED_SRC" \
+            --tests-dir tests/ \
+            --use-coverage \
+            --no-progress \
+            --runner "python -m pytest -x -q --no-header -p no:cacheprovider tests/" \
+            || echo "mutmut finished with survivors, or hit the time box"
+
+      - name: Report
+        if: env.CHANGED_SRC != ''
+        run: |
+          {
+            echo "### Mutation testing (advisory)"
+            echo
+            echo "Files mutated: \`$CHANGED_SRC\`"
+            echo
+            echo '```'
+            mutmut results 2>&1 | tail -40 || true
+            echo '```'
+            echo
+            echo "A surviving mutant is a change to the source that no test noticed."
+            echo "This check reports; it does not block."
+          } >> "$GITHUB_STEP_SUMMARY"

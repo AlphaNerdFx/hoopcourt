@@ -10,3 +10,8 @@ pytest-cov~=6.0
 # suite passed locally for months while a clean install could not collect
 # tests/test_api.py at all. CI found it on the first run against the remote.
 httpx~=0.28
+
+# Mutation testing, run per pull request against the files a branch changed.
+# Pinned to 2.5.1: mutmut 3.x asserts internally that module names do not start
+# with `src.`, which every import in this repository does, so it cannot run here.
+mutmut==2.5.1

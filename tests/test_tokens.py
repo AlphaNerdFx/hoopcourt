@@ -1,7 +1,54 @@
 """Token gate tests."""
 from __future__ import annotations
 
-from src.api.tokens import HeuristicCounter, build_counter
+import sys
+import types
+
+import pytest
+
+from src.api.tokens import (
+    DEFAULT_LOCAL_TOKENIZER,
+    DEFAULT_LOCAL_TOKENIZER_REVISION,
+    HeuristicCounter,
+    HFTokenizerCounter,
+    build_counter,
+)
+
+
+@pytest.fixture
+def fake_transformers(monkeypatch):
+    """Records the kwargs from_pretrained was called with.
+
+    transformers is not installed in CI and importing it costs ~70s cold even
+    when it is, so the pin is checked against a fake. Nothing here exercises
+    tokenization -- only which revision the load asks for.
+    """
+    calls: list[dict] = []
+    module = types.ModuleType("transformers")
+
+    class _AutoTokenizer:
+        @staticmethod
+        def from_pretrained(model_id, **kwargs):
+            calls.append({"model_id": model_id, **kwargs})
+            return types.SimpleNamespace(encode=lambda text, **_: text.split())
+
+    module.AutoTokenizer = _AutoTokenizer
+    monkeypatch.setitem(sys.modules, "transformers", module)
+    return calls
+
+
+def test_the_default_tokenizer_load_is_pinned(fake_transformers):
+    """Drop `revision=` and this goes red."""
+    HFTokenizerCounter()
+    assert fake_transformers[0]["revision"] == DEFAULT_LOCAL_TOKENIZER_REVISION
+
+
+def test_another_model_id_is_not_pinned_to_qwens_revision(fake_transformers):
+    """The pin belongs to one repo. Applying it to a different model_id would
+    fail the load and silently downgrade the gate to the heuristic."""
+    HFTokenizerCounter("some-org/some-other-model")
+    assert fake_transformers[0]["revision"] is None
+    assert DEFAULT_LOCAL_TOKENIZER == "Qwen/Qwen2.5-7B-Instruct"
 
 
 def test_heuristic_never_undercounts_legal_english():

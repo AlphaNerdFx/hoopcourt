@@ -124,10 +124,11 @@ Then v1.2.0 corpus expansion, v1.3.0 statistics by SQL (D14).
    install them, but it means the backend's *success* is only ever proven by the
    manual gate in `docs/project/TESTING.md`. Re-run it before any release
    touching `src/model/generation.py`.
-2. **`hf_hub_download` has no `revision=` pin.** A security review found no
-   exploitable issue in the v1.0.0 diff but flagged this as real supply-chain
-   exposure: a compromise of `Qwen/Qwen2.5-7B-Instruct-GGUF` yields a GGUF that
-   `llama_cpp` loads. Predates this release.
+2. ~~**`hf_hub_download` has no `revision=` pin.**~~ **Fixed after 1.0.0**, see
+   the Unreleased changelog section. Both hub calls and the tokenizer load are
+   pinned to commit SHAs. What remains is maintenance, not exposure: a pin goes
+   stale, and the opt-in network test (`NBA_NETWORK_TESTS=1`) is what notices,
+   since it now resolves the pinned revision rather than `main`.
 3. **`release.yml:37`** interpolates `github.event.inputs.tag` into a shell
    command. Pre-existing, write-access gated. Move it to `env:`.
 4. **Citation verification cannot see relevance.** It proves a citation came

@@ -27,6 +27,7 @@ brief, per [CODE_REVIEW.md](CODE_REVIEW.md).
 | Integration, eval and smoke | `pr.yml` | yes | Builds a public-domain index, runs the 45-question evaluation, then drives the assembled API |
 | Benchmark (base vs head) | `pr.yml` | yes | Seven hot paths, measured on both commits on the same runner |
 | Mutation (changed files) | `pr.yml` | **no, advisory** | How many mutants of the files this branch changed survive the suite |
+| Dependency audit | `ci.yml` | **no, advisory** | Known advisories against the declared dependencies, minus a triage list |
 
 ### Integration, eval and smoke
 
@@ -90,6 +91,28 @@ for every pull request, edit `DEFAULT_THRESHOLD_PCT` in `.github/workflows/pr.ym
 
 A regression that is real and not worth paying for is a blocked merge. Optimise
 it, or split the slow part out of the branch.
+
+### Dependency audit, and why it is advisory here and blocking weekly
+
+`scripts/audit_deps.py` wraps `pip-audit`. A bare run is red today and would
+stay red: 20 advisories across starlette, pytest and transformers, **none of
+which this code can reach**. The script carries the triage, one entry per
+advisory with the reason, checked against the real call sites rather than
+reasoned about in the abstract. Anything not on that list exits non-zero, and a
+triage entry whose advisory has disappeared upstream is reported as stale, so
+the list cannot rot into a permanent silence.
+
+It is **advisory on a pull request** because an advisory published this morning
+is not something your change broke, and a check that fails for reasons outside
+the change is one people learn to route around. The same script runs
+**weekly and blocking** in `upstream.yml`, which is where failing is real.
+
+Before adding an entry, read the call sites. The justification is about *our*
+usage, so a new feature can invalidate one without the advisory changing at all.
+
+Alerts, automated security fixes, secret scanning and push protection are
+enabled on the repository itself; `.github/dependabot.yml` adds grouped weekly
+version updates on top.
 
 ### Mutation, and why it does not block
 

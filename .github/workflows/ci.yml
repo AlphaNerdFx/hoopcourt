@@ -38,6 +38,15 @@ jobs:
       - name: Lint
         run: ruff check src scripts tests
 
+      - name: Dependency audit
+        # Advisory here, blocking weekly in upstream.yml. A newly published
+        # advisory against an unchanged dependency is not something this pull
+        # request broke, and a check that fails for reasons outside the change
+        # is one people learn to route around. The weekly job is where it bites.
+        if: matrix.python == '3.12'
+        continue-on-error: true
+        run: python scripts/audit_deps.py --show-triaged
+
       - name: Tests
         # The corpus is gitignored, so tests must run without it. Anything that
         # needs a real document is skipped, not silently passed: see the

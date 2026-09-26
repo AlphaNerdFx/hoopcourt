@@ -71,3 +71,6 @@ Prompts and Responses.txt
 # the commercial repository and is ignored here so no `git add -A` can publish
 # it. See docs/project/VERSIONING.md.
 internal/
+
+# Hypothesis keeps a local example database and failure patches here.
+.hypothesis/

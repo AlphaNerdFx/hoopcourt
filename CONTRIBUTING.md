@@ -65,6 +65,16 @@ should refuse.
 * `tests/eval/questions.yaml` is the requirement; `run_eval.py` measures it. Use
   the `CURRENT` sentinel for questions with no year in them so expectations track
   the season rollover.
+* Three suites do a different job from the example-based ones, and are worth
+  knowing before you add to them:
+  * `tests/test_properties.py` states invariants and lets Hypothesis hunt for a
+    counterexample. Add one where an invariant is load-bearing, not everywhere.
+  * `tests/test_golden_chunks.py` records the exact chunk boundaries a fixed
+    document produces. A diff there is a chunking change; re-record with
+    `UPDATE_GOLDEN=1` and put the diff in the pull request.
+  * `tests/test_regex_safety.py` proves no pattern on the request path can hang
+    a worker. It discovers patterns from the modules, so a new regex is covered
+    automatically.
 
 ## Style
 

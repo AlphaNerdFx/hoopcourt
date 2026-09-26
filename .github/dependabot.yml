@@ -1,0 +1,42 @@
+# Dependency updates.
+#
+# Alerts and automated security fixes are enabled on the repository itself; this
+# file adds scheduled *version* updates on top of them.
+#
+# Grouped on purpose. Ungrouped, this opens one pull request per dependency per
+# week, and every one of them runs five required checks including a ~4 minute
+# index build. A wall of pull requests nobody reviews is how dependency updates
+# stop being read, which is the failure mode this is meant to prevent.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+    open-pull-requests-limit: 3
+    groups:
+      # One pull request for the routine bumps. A major version is separated
+      # because it can change behaviour, and this project pins several
+      # dependencies to ranges chosen after a real incident (see the comments in
+      # requirements.txt about starlette and the TestClient).
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "ci"

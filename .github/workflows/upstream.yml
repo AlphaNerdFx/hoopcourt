@@ -34,3 +34,23 @@ jobs:
         env:
           NBA_NETWORK_TESTS: "1"
         run: pytest tests/test_local_backend.py -m network -q
+
+  dependency-audit:
+    name: No untriaged dependency advisories
+    runs-on: ubuntu-latest
+    # Weekly and BLOCKING, where the same check is advisory on a pull request.
+    # The split is the point: an advisory published today is not caused by
+    # anybody's change, so it must not block their merge, but it still needs a
+    # place where failing is real. This is that place.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit~=2.7
+
+      - name: Audit, with the triage list
+        run: python scripts/audit_deps.py --show-triaged

@@ -15,3 +15,8 @@ httpx~=0.28
 # Pinned to 2.5.1: mutmut 3.x asserts internally that module names do not start
 # with `src.`, which every import in this repository does, so it cannot run here.
 mutmut==2.5.1
+
+# Dependency vulnerability audit. Run through scripts/audit_deps.py, which
+# carries the triage list and its justifications; a bare run is red today and
+# would stay red, and a scanner that is always red gets ignored.
+pip-audit~=2.7

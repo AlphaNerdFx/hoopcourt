@@ -25,4 +25,4 @@ pip-audit~=2.7
 # an invariant is load-bearing: chunk boundaries (a citation must describe the
 # text it labels), the router (one era for any string), and the derivation of
 # ambiguous years (a missed boundary is a wrong-era answer).
-hypothesis~=6.100
+hypothesis~=6.168

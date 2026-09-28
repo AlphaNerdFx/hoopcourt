@@ -22,7 +22,7 @@ fastapi~=0.115
 # to the range the suite is actually green against.
 starlette>=0.40,<0.53
 uvicorn[standard]~=0.34
-pydantic~=2.10
+pydantic~=2.13
 
 # --- Testing / eval harness ---
 pyyaml~=6.0

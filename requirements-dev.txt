@@ -19,7 +19,7 @@ mutmut==2.5.1
 # Dependency vulnerability audit. Run through scripts/audit_deps.py, which
 # carries the triage list and its justifications; a bare run is red today and
 # would stay red, and a scanner that is always red gets ignored.
-pip-audit~=2.7
+pip-audit~=2.10
 
 # Property-based testing. Used by tests/test_properties.py for the three places
 # an invariant is load-bearing: chunk boundaries (a citation must describe the

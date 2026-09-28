@@ -74,3 +74,10 @@ internal/
 
 # Hypothesis keeps a local example database and failure patches here.
 .hypothesis/
+
+# Knowledge-graph build output from the graphify skill. Generated, not authored:
+# it is rebuilt from the corpus on demand, it duplicates docstrings and source
+# structure already tracked here, and graph.html alone runs to megabytes. Ignored
+# for the same reason `internal/` is: nothing generated should be publishable by
+# an accidental `git add -A`.
+graphify-out/

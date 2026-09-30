@@ -1,6 +1,9 @@
 # Status
 
-_Snapshot; re-generate the numbers with the commands shown._
+_**This page is the single source of truth for measured numbers.** Other
+documents link here rather than restating them: a count copied "for
+convenience" was wrong in every copy within a fortnight. Re-generate with the
+commands shown._
 
 ## Working
 
@@ -17,11 +20,33 @@ _Snapshot; re-generate the numbers with the commands shown._
 | Source-URL checking | `scripts/fetch_corpus.py --check-urls` |
 | Manifest integrity | `tests/test_manifest.py` (44 checks) |
 
-**460 tests collected, 456 passing in ~28 s** (`make test`) against the complete
-46-document index, and **45/45 on the evaluation** (`make eval`) with temporal
-isolation at 100%, the gate. Without the index 431 pass and 26 skip; one test is
-an opt-in network check and three are deliberate xfails, each a timeline entry
-whose source needs a human with network access to replace.
+**484 tests collected**, and **45/45 on the evaluation** (`make eval`) with
+temporal isolation at 100% across 25 queries, the gate.
+
+How many of the 484 run depends on what the machine has. All three figures are
+measured, because the difference between them is the point: a suite that skips
+32 tests in CI is not the suite a developer runs.
+
+| Environment | Passed | Skipped | xfailed |
+| --- | --- | --- | --- |
+| Full index + corpus dir (`make test`, ~70-85 s) | 480 | 1 | 3 |
+| Full corpus dir, index hidden | 477 | 4 | 3 |
+| CI: no corpus, judicial-tier `ci.db` only (~30 s) | 452 | 29 | 3 |
+
+The one skip present everywhere is the opt-in network check. The three extra
+skips without the index are the index-gated checks in
+`tests/test_documented_numbers.py`. The remaining CI skips are corpus-gated: the
+18 copyrighted PDFs cannot be in CI, by design. The three xfails are deliberate,
+each a timeline entry whose source needs a human with network access to
+replace.
+
+Measured 2026-09-30. Re-derive with `make test` and `make eval`; the three
+index-derived counts (46 documents, 5,724 chunks, 15 ambiguous seasons) are
+asserted by `tests/test_documented_numbers.py`, so a rebuild that moves them
+fails the suite rather than quietly staling this page. Those three tests skip in
+CI, which builds a smaller judicial-tier index and would otherwise assert the
+wrong numbers; they fire on a machine with the full index, which is where a
+rebuild happens.
 
 Read 45/45 with one caveat: four recall checks were passing on terms that appear
 in half to nearly all of the expected document, so they could not fail. They were
@@ -32,14 +57,14 @@ colloquial-phrasing questions, taking it to 45. The figure below is measured
 
 ```
 CATEGORY                 PASS  TOTAL   RATE
-grounded_citation          10     10   100.0%
+grounded_citation          12     12   100.0%
 refusal                     6      6   100.0%
 temporal_isolation         12     12   100.0%
 trigger_routing            15     15   100.0%
-OVERALL                    43     43   100.0%
+OVERALL                    45     45   100.0%
 
-no_bleed            23/23   100.0%     <- the gate
-in_expected_docs    23/23   100.0%
+no_bleed            25/25   100.0%     <- the gate
+in_expected_docs    25/25   100.0%
 recall              22/22   100.0%
 ```
 

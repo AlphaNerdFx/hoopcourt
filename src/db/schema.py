@@ -160,7 +160,7 @@ def ambiguous_seasons(conn: sqlite3.Connection) -> set[int]:
     "2023" may mean the 2022-23 season or 2023-24, and in this corpus those reach
     different CBAs -- which is why CLAUDE.md sec.5.2 requires a clarification
     prompt. But 2023 is not special: every document-window boundary creates the
-    same ambiguity. Measured against the shipped manifest, **fourteen** years are
+    same ambiguity. Measured against the shipped manifest, **fifteen** years are
     ambiguous, of which the spec names one. "What was the salary cap in 2011?"
     silently resolves to CBA 2011 even though the 2010-11 season is governed by
     CBA 2005 -- a wrong answer delivered with a real-looking citation, which is

@@ -190,10 +190,10 @@ RTX 4060 of `CLAUDE.md` §3.1.
 That reasoning is right and its scope is wrong. Nothing about 2023 is special,
 *every* document-window boundary creates the same ambiguity.
 
-Measured against the shipped manifest, **fourteen** years are ambiguous:
+Measured against the shipped manifest, **fifteen** years are ambiguous:
 
 ```
-1995 1999 2003 2004 2005 2011 2017 2019 2023 2024 2025 2026 2027 2030
+1995 1999 2003 2004 2005 2011 2012 2017 2019 2023 2024 2025 2026 2027 2030
 ```
 
 `2011` is the clearest example. The 2010-11 season is governed by CBA 2005 and

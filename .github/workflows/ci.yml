@@ -56,7 +56,11 @@ jobs:
         # tests written to raise the number rather than to catch a defect, and
         # every serious defect found in this project so far was in code the suite
         # already covered. See docs/project/TESTING.md.
-        run: pytest tests/ -q --maxfail=1 --cov=src --cov-report=term-missing
+        # No `-q` here. pyproject's addopts already sets it, and a second one
+        # makes `-qq`, which suppresses the "N passed" summary line -- a test
+        # job that never reports how many tests ran is a gate nobody can audit,
+        # and is how the documented suite count drifted 24 tests without notice.
+        run: pytest tests/ --maxfail=1 --cov=src --cov-report=term-missing
 
   integrity:
     name: Corpus and timeline integrity

@@ -31,7 +31,7 @@ measured, because the difference between them is the point: a suite that skips
 | --- | --- | --- | --- |
 | Full index + corpus dir (`make test`, ~60-85 s) | 514 | 1 | 3 |
 | Full corpus dir, index hidden | 511 | 4 | 3 |
-| CI: no corpus, judicial-tier `ci.db` only (~32 s) | see the PR run | | |
+| CI: no corpus, judicial-tier `ci.db` only (~26 s) | 486 | 29 | 3 |
 
 The one skip present everywhere is the opt-in network check. The three extra
 skips without the index are the index-gated checks in

@@ -29,6 +29,7 @@ from src.db.schema import (
     migrate,
     nearest_covered_season,
     resolve_era_documents,
+    stale_operational_season,
 )
 from src.db.search import retrieve_segmented_context, retrieve_timeline
 from src.ingest.embedder import Embedder
@@ -155,6 +156,10 @@ class Coverage(BaseModel):
     nearest_covered_season: int | None = None
     reason: str | None = None      # era_not_covered | no_match | ambiguous_season
     message: str | None = None
+    # Set when the era resolves to documents but the annually reissued ones have
+    # aged out. A separate field rather than a `reason`, because `reason` answers
+    # "why did this return nothing" and this caveats an answer that *did* return.
+    operational_gap: str | None = None
 
 
 class Grounding(BaseModel):
@@ -287,8 +292,19 @@ def query(request: QueryRequest, conn=Depends(get_conn)):
         message = (f"No source in this index covers the {season} season. "
                    f"Coverage runs {span}"
                    + (f"; the nearest covered season is {near}." if near else "."))
+    # A gap in the annually reissued tier is invisible to the branch above: the
+    # era still resolves to the CBA and the Constitution, so `covered` is True
+    # while the playing rules are absent. Measured 2026-10-01, when the season
+    # rolled over and took the rulebook out of every modern query in silence.
+    stale_since = (stale_operational_season(conn, int(season))
+                   if season is not None else None)
+    operational_gap = None if stale_since is None else (
+        f"No annually reissued source (rulebook, officials guide) covers the "
+        f"{season} season; the newest in this index covers {stale_since}. "
+        f"Anything below is drawn from the CBA and Constitution, which do not "
+        f"carry playing rules.")
     coverage = Coverage(
-        season=season, covered=covered,
+        season=season, covered=covered, operational_gap=operational_gap,
         earliest_season=bounds[0] if bounds else None,
         latest_season=bounds[1] if bounds else None,
         nearest_covered_season=(nearest_covered_season(conn, int(season))

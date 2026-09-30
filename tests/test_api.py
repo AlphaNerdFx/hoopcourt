@@ -244,3 +244,69 @@ def test_excerpt_keeps_an_unbroken_token_rather_than_gutting_the_preview():
 
     out = _excerpt("y" * 900)
     assert len(out) > EXCERPT_CHARS // 2
+
+
+# ---- operational coverage disclosure (F5) -----------------------------------
+
+@pytest.fixture
+def aged_out_client(tmp_path, monkeypatch):
+    """An index whose annual reissue is a season behind the one being asked about.
+
+    This is the 2026-10-01 shape: the router rolls the current season over on
+    1 October, the rulebook is scoped to one season, and the CBA still covers
+    the new one -- so era resolution succeeds while the playing rules are gone.
+    """
+    db = tmp_path / "aged.db"
+    conn = initialize_database(str(db))
+    docs = [("2023 NBA CBA", "Current Governing", 2023, 2029),
+            ("Official 2025-26 Rulebook", "Current Governing", 2025, 2025)]
+    for name, cat, s, e in docs:
+        cur = conn.execute(
+            "INSERT INTO documents (doc_name, category, start_season, end_season,"
+            " source_url) VALUES (?,?,?,?,'https://example.invalid')", (name, cat, s, e))
+        doc_id = cur.lastrowid
+        for i in range(3):
+            vec = [0.0] * EMBEDDING_DIM
+            vec[0] = 1.0
+            c = conn.execute(
+                "INSERT INTO document_chunks (doc_id, chunk_hash, article_num,"
+                " section_num, page_num, is_verified, text_content)"
+                " VALUES (?,?,'VII','3',?,1,?)",
+                (doc_id, hashlib.sha256(f"aged{name}{i}".encode()).hexdigest(), i + 1,
+                 f"{name} provision {i} concerning the Salary Cap."))
+            conn.execute("INSERT INTO vec_chunks (chunk_id, doc_id, embedding)"
+                         " VALUES (?,?,?)", (c.lastrowid, doc_id, serialize_float32(vec)))
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setenv("NBA_LEGAL_DB", str(db))
+    import importlib
+
+    from src.api import main as main_mod
+    importlib.reload(main_mod)
+    monkeypatch.setattr(main_mod, "DB_PATH", str(db))
+    monkeypatch.setattr(main_mod, "Embedder", StubEmbedder)
+    with TestClient(main_mod.app) as c:
+        yield c
+
+
+def test_a_season_past_the_newest_rulebook_says_so(aged_out_client):
+    # The answer is still served -- the CBA covers 2026 -- but silence about the
+    # missing rulebook is what sec.2.2 calls a coverage gap presented as an
+    # answer, so the caveat has to travel with the response.
+    body = aged_out_client.post("/query", json={
+        "query": "What are the shot clock rules in 2027?"}).json()
+    assert body["coverage"]["covered"] is True
+    gap = body["coverage"]["operational_gap"]
+    assert gap is not None
+    assert "2025" in gap
+
+
+def test_a_season_the_rulebook_covers_carries_no_caveat(aged_out_client):
+    # 2025 is a window boundary in this fixture (the rulebook opens there), so it
+    # returns 409 and has no coverage block at all -- clarify it, or this asserts
+    # against the wrong response shape.
+    body = aged_out_client.post("/query", json={
+        "query": "What are the shot clock rules in 2025?",
+        "clarified_season": "2025-26"}).json()
+    assert body["coverage"]["operational_gap"] is None

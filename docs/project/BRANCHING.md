@@ -136,6 +136,27 @@ Tooling note: `mutmut` is pinned to **2.5.1**. Version 3.x asserts internally
 that module names do not begin with `src.`, which every import in this
 repository does.
 
+## The one gate that is local, not CI
+
+CI evaluates against a judicial-tier `ci.db` built from public-domain opinions,
+because the 18 corpus PDFs are copyrighted and must never reach it (CLAUDE.md
+sec.7.1). So the **full-index evaluation is gated nowhere**, and that is not a
+small hole: on 2026-10-01 it fell from 51/51 to 50/51 with no code change, when
+the season rolled over and the rulebook aged out of every modern query (F5,
+docs/operations/STATUS.md). Nothing caught it. It was noticed by hand a day
+later.
+
+`make check` runs lint, the suite and the full-index evaluation. `make hooks`
+installs it as a pre-push hook, once per clone:
+
+```bash
+make hooks     # git config core.hooksPath .githooks
+```
+
+The hook skips the evaluation when no index is present, because a fresh clone
+cannot build one and a hook that blocks every push on such a machine gets
+uninstalled, which is worse than no hook.
+
 ## Branch protection
 
 `master` requires a pull request, and the four blocking checks above must pass.

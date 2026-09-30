@@ -191,6 +191,17 @@ function render(d) {
     out.appendChild(c);
   }
 
+  // Shown even though `covered` is true: the era resolves, so the sources below
+  // are real, but the annually reissued documents have aged out and the playing
+  // rules are not among them. Disclosure that only reaches the JSON is not
+  // disclosure -- the reader is the one who has to know.
+  if (cov.operational_gap) {
+    const c = el("div", "card notice");
+    c.appendChild(el("strong", null, "This index is a season behind"));
+    c.appendChild(el("p", "excerpt", cov.operational_gap));
+    out.appendChild(c);
+  }
+
   if (d.answer) {
     const s = el("section");
     s.appendChild(el("h2", null, "Answer"));

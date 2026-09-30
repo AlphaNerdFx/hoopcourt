@@ -28,7 +28,7 @@ from src.api.router import (  # noqa: E402
     retrieval_text,
 )
 from src.db.connection import get_vector_db_connection  # noqa: E402
-from src.db.schema import ambiguous_seasons  # noqa: E402
+from src.db.schema import ambiguous_seasons, stale_operational_season  # noqa: E402
 from src.db.search import retrieve_segmented_context  # noqa: E402
 from src.ingest.embedder import Embedder  # noqa: E402
 from src.model.generation import build_generator  # noqa: E402
@@ -141,7 +141,27 @@ def evaluate(db_path: str, questions: list[dict], verbose: bool,
             if "expect_terms_any" in q and not q.get("expect_empty"):
                 terms = [t.lower() for t in q["expect_terms_any"]]
                 blob = " ".join(c["text"].lower() for c in chunks)
-                if not chunks and "expect_documents" in q and \
+                # A question may declare that one check is blocked by a corpus
+                # coverage gap rather than by a retrieval defect. The marker is
+                # deliberately not taken on trust: the gap is re-derived here, so
+                # a marker cannot outlive its cause and quietly excuse a real
+                # failure. If the gap has closed, the stale marker is the
+                # failure, which is what forces someone to delete it.
+                routed = route["target_year"]
+                gap_season = (stale_operational_season(conn, int(routed))
+                              if routed is not None else None)
+                if q.get("known_gap") == "recall":
+                    if gap_season is not None:
+                        r.checks["recall"] = None
+                        r.notes.append(
+                            f"recall not judged: no annually reissued source covers "
+                            f"{routed}, newest covers {gap_season} (known_gap)")
+                    else:
+                        r.check("known_gap_closed", False,
+                                "known_gap: recall is declared but the corpus no "
+                                "longer has that gap -- delete the marker and let "
+                                "this question be judged again")
+                elif not chunks and "expect_documents" in q and \
                         not (set(q["expect_documents"]) & indexed):
                     r.checks["recall"] = None
                 else:

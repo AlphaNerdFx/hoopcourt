@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Runs the gate that CI cannot run.
+#
+# CI evaluates against a judicial-tier `ci.db` built from public-domain
+# opinions, because the 18 corpus PDFs are copyrighted and must never reach it
+# (CLAUDE.md sec.7.1). So the full-index evaluation -- the one that measures the
+# project's actual claim -- is gated nowhere, and on 2026-10-01 it silently fell
+# from 51/51 to 50/51 when the season rolled over and the rulebook aged out of
+# every modern query. Nothing caught it; it was noticed by hand a day later.
+#
+# Skips rather than fails when the index is absent: a fresh clone has no corpus
+# and cannot build one, and a hook that blocks every push on such a machine gets
+# uninstalled, which is worse than no hook.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+DB="${DB:-nba_legal.db}"
+
+if [ ! -f "$DB" ]; then
+  echo "pre-push: no $DB, skipping the full-index evaluation (lint + tests only)"
+  make lint test
+  exit 0
+fi
+
+echo "pre-push: lint, tests, and the full-index evaluation"
+make check

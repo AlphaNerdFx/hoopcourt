@@ -241,6 +241,14 @@ questions:
                      "NBA Draft Lottery 2026 Probabilities"]
   forbid_documents: ["CBA 1995", "CBA 2011", "NBPA CBA 1999", "CBA 2005"]
   expect_terms_any: ["shot clock", "24", "reset"]
+  # F5, measured 2026-10-01. The router derives the current season from the clock
+  # and rolls over on 1 October, so this question moved to season 2026 while
+  # "Official 2025-26 Rulebook" is scoped 2025-2025 -- and it holds all 38
+  # "shot clock" passages. No 2026-27 rulebook is in this corpus yet, so recall
+  # here would measure the corpus being a year behind, not retrieval. The runner
+  # re-derives the gap and fails if it has closed, so this cannot outlive its
+  # cause. Delete it when the 2026-27 rulebook is fetched.
+  known_gap: recall
 
 - id: constitution-team-transfer
   category: grounded_citation

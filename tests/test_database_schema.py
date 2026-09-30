@@ -337,3 +337,70 @@ def test_a_row_with_an_invalid_tier_fails_the_migration_and_changes_nothing(tmp_
     assert conn.execute("SELECT COUNT(*) FROM document_chunks").fetchone()[0] == 1
     assert _objects(conn) == before
     assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+
+
+# ---- operational coverage (F5) ----------------------------------------------
+# On 2026-10-01 the season rolled over and four documents scoped 2025-2025 left
+# the candidate set at once, taking every "shot clock" passage with them, while
+# resolve_era_documents still returned six documents so coverage looked complete.
+# These pin the discriminator that notices it.
+
+# Named apart from _doc above deliberately: that one defaults to Historical and
+# takes no tier, and shadowing it made two unrelated tests fail on a NULL doc_id.
+def _tiered_doc(conn, name, start, end, tier="primary",
+                category="Current Governing"):
+    return conn.execute(
+        "INSERT INTO documents (doc_name, category, start_season, end_season,"
+        " source_url, source_tier) VALUES (?,?,?,?,'https://example.invalid',?)",
+        (name, category, start, end, tier)).lastrowid
+
+
+def test_a_corpus_with_no_annual_reissue_reports_no_latest_annual_season(conn):
+    from src.db.schema import latest_annual_season
+    _tiered_doc(conn, "2023 NBA CBA", 2023, 2029)
+    assert latest_annual_season(conn) is None
+
+
+def test_the_latest_annual_season_ignores_multi_season_documents(conn):
+    # category cannot be the discriminator: the CBA is "Current Governing" too.
+    from src.db.schema import latest_annual_season
+    _tiered_doc(conn, "2023 NBA CBA", 2023, 2029)
+    _tiered_doc(conn, "Official 2025-26 Rulebook", 2025, 2025)
+    assert latest_annual_season(conn) == 2025
+
+
+def test_a_timeline_entry_does_not_count_as_an_annual_reissue(conn):
+    # Timeline entries are one season wide by construction, so counting them
+    # would report the corpus as current on the strength of a curated note.
+    from src.db.schema import latest_annual_season
+    _tiered_doc(conn, "Shot clock (1954)", 1954, 1954, tier="timeline",
+         category="Historical")
+    assert latest_annual_season(conn) is None
+
+
+def test_a_season_the_newest_annual_reissue_covers_is_not_stale(conn):
+    from src.db.schema import stale_operational_season
+    _tiered_doc(conn, "Official 2025-26 Rulebook", 2025, 2025)
+    assert stale_operational_season(conn, 2025) is None
+
+
+def test_a_season_past_the_newest_annual_reissue_is_stale(conn):
+    from src.db.schema import stale_operational_season
+    _tiered_doc(conn, "Official 2025-26 Rulebook", 2025, 2025)
+    assert stale_operational_season(conn, 2026) == 2025
+
+
+def test_a_historical_season_is_not_reported_stale(conn):
+    # 1995 has no annual document either, but that is ordinary era coverage --
+    # not the corpus having aged out underneath a question about now. Reporting
+    # it would fire on every historical query.
+    from src.db.schema import stale_operational_season
+    _tiered_doc(conn, "Official 2025-26 Rulebook", 2025, 2025)
+    _tiered_doc(conn, "Draft Probabilities 2003", 2003, 2003, category="Historical")
+    assert stale_operational_season(conn, 1995) is None
+
+
+def test_a_corpus_with_no_annual_reissue_never_reports_staleness(conn):
+    from src.db.schema import stale_operational_season
+    _tiered_doc(conn, "2023 NBA CBA", 2023, 2029)
+    assert stale_operational_season(conn, 2099) is None

@@ -5,7 +5,7 @@ PIP    := $(VENV)/bin/pip
 DB     ?= nba_legal.db
 
 .PHONY: help venv install install-dev corpus opinions audit build seed test eval \
-        lint serve check urls clean
+        lint serve check urls hooks clean
 
 help:
 	@echo "make install   create venv and install core dependencies"
@@ -19,7 +19,8 @@ help:
 	@echo "make lint      ruff"
 	@echo "make test      unit tests"
 	@echo "make eval      routing + anti-bleed evaluation (the gate)"
-	@echo "make check     test + eval"
+	@echo "make check     lint + test + eval"
+	@echo "make hooks     install the pre-push hook (runs make check)"
 	@echo "make serve     run the API on :8000"
 
 venv:
@@ -65,6 +66,13 @@ eval:
 	$(PY) tests/eval/run_eval.py --db $(DB)
 
 check: lint test eval
+
+hooks:
+	# Points git at the tracked .githooks/ rather than the untracked
+	# .git/hooks, so the hook travels with the repo instead of living on
+	# one machine. Run once per clone.
+	git config core.hooksPath .githooks
+	@echo "pre-push hook installed; it runs make check"
 
 serve:
 	# python -m, not $(VENV)/bin/uvicorn: the console script only exists if

@@ -20,7 +20,7 @@ commands shown._
 | Source-URL checking | `scripts/fetch_corpus.py --check-urls` |
 | Manifest integrity | `tests/test_manifest.py` (44 checks) |
 
-**505 tests collected**, and **51/51 on the evaluation** (`make eval`) with
+**518 tests collected**, and **51/51 on the evaluation** (`make eval`) with
 temporal isolation at 100% across 25 queries, the gate.
 
 How many of the 484 run depends on what the machine has. All three figures are
@@ -29,9 +29,9 @@ measured, because the difference between them is the point: a suite that skips
 
 | Environment | Passed | Skipped | xfailed |
 | --- | --- | --- | --- |
-| Full index + corpus dir (`make test`, ~60-85 s) | 505 | 1 | 3 |
-| Full corpus dir, index hidden | 502 | 4 | 3 |
-| CI: no corpus, judicial-tier `ci.db` only (~32 s) | 477 | 29 | 3 |
+| Full index + corpus dir (`make test`, ~60-85 s) | 514 | 1 | 3 |
+| Full corpus dir, index hidden | 511 | 4 | 3 |
+| CI: no corpus, judicial-tier `ci.db` only (~26 s) | 486 | 29 | 3 |
 
 The one skip present everywhere is the opt-in network check. The three extra
 skips without the index are the index-gated checks in
@@ -173,6 +173,39 @@ not mean *"the best available passage was retrieved"*. Catching that class of
 problem needs either graded relevance judgements (which passage, not which
 document) or a data-quality check upstream, `scripts/audit_corpus.py` now does
 the latter for this specific failure.
+
+### The corpus can age out from under a green run (F5)
+
+Measured 2026-10-01. The router derives the current season from the clock and
+rolls over on 1 October, so an unqualified modern question moved from season 2025
+to 2026 overnight. Four documents scoped `2025-2025` left the candidate set at
+the same moment, and they are the operational ones:
+
+| document | chunks |
+| --- | --- |
+| Official 2025-26 Rulebook | 147 |
+| 2025-26 NBA Officials Guide | 84 |
+| 2025-26 NBA Concussion Policy | 7 |
+| 2025-26 NBA Officiating Staff | 2 |
+
+All 38 "shot clock" passages are in the rulebook. `corpus_manifest.yaml` is not
+wrong, a 2025-26 rulebook genuinely does not govern 2026-27; the corpus simply
+has no 2026-27 rulebook yet. The failure was that **nothing said so**:
+`resolve_era_documents(2026)` still returned six documents, so coverage looked
+complete while the playing rules were gone, and shot-clock questions were
+answered from the CBA and the Constitution.
+
+The API now says it. `coverage.operational_gap` is set whenever the routed season
+runs past the newest annually reissued document, named by
+`db.schema.stale_operational_season()` and derived from window width rather than
+`category`, because the CBA is "Current Governing" exactly like the rulebook.
+The affected evaluation question carries `known_gap: recall`, and the runner
+re-derives the gap rather than trusting the marker: once a 2026-27 rulebook is
+indexed the marker fails and has to be deleted, so it cannot become a permanent
+excuse.
+
+Remaining limitation: retrieval still cannot answer a playing-rules question for
+the current season. Fetching the 2026-27 rulebook is the actual remedy.
 
 Two consequences:
 

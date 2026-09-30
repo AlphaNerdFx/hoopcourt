@@ -294,3 +294,49 @@ def nearest_covered_season(conn: sqlite3.Connection, season: int) -> int | None:
             if lo <= candidate <= hi and resolve_era_documents(conn, candidate):
                 return candidate
     return None
+
+
+def latest_annual_season(conn: sqlite3.Connection) -> int | None:
+    """The newest season an annually-reissued document speaks to.
+
+    A rulebook, officials guide or staff roster is reissued every year, so its
+    window is one season wide (``corpus_manifest.yaml``: "rulebooks are reissued
+    annually"). A CBA or Constitution spans many. That width is the only
+    discriminator in the schema: ``category`` does not separate them, because the
+    2023 CBA is "Current Governing" exactly like the rulebook.
+
+    Derived from the index rather than hardcoded, for the same reason
+    ``ambiguous_seasons()`` is: adding next year's rulebook must move this
+    without anyone remembering to.
+    """
+    row = conn.execute(
+        "SELECT max(end_season) AS hi FROM documents "
+        "WHERE start_season = end_season AND source_tier != ?", (TIMELINE_TIER,)
+    ).fetchone()
+    return None if not row or row["hi"] is None else int(row["hi"])
+
+
+def stale_operational_season(conn: sqlite3.Connection, season: int) -> int | None:
+    """The newest annually-reissued season, when ``season`` has run past it.
+
+    Measured on 2026-10-01, and this is why the function exists: the router
+    derives the current season from the clock and rolls over on 1 October, so a
+    modern query moved from season 2025 to 2026 overnight. Four documents scoped
+    2025-2025 left the candidate set at once -- the rulebook (147 chunks), the
+    officials guide (84), the concussion policy (7) and the officiating staff
+    (2) -- taking every one of the 38 "shot clock" passages with them.
+
+    Nothing noticed. ``resolve_era_documents(2026)`` still returned six
+    documents, so coverage looked complete while the operational tier was
+    simply gone, and shot-clock questions were answered from the CBA and the
+    Constitution. A coverage gap presented as an answer is what CLAUDE.md
+    sec.2.2 calls a fatal error, so it has to be said out loud.
+
+    Only a season *past* the newest reissue counts. A 1995 query finds no annual
+    document either, but that is ordinary era coverage, not the corpus having
+    aged out underneath a question about now.
+    """
+    latest = latest_annual_season(conn)
+    if latest is None or season <= latest:
+        return None
+    return latest

@@ -20,13 +20,25 @@ commands shown._
 | Source-URL checking | `scripts/fetch_corpus.py --check-urls` |
 | Manifest integrity | `tests/test_manifest.py` (44 checks) |
 
-**484 tests collected: 480 passed, 1 skipped, 3 xfailed in ~70-85 s**
-(`make test`) against the complete 46-document index, and **45/45 on the
-evaluation** (`make eval`) with temporal isolation at 100% across 25 queries,
-the gate. Without the index 477 pass and 4 skip: the three index-gated checks in
-`tests/test_documented_numbers.py` join the one opt-in network check. The three
-xfails are deliberate, each a timeline entry whose source needs a human with
-network access to replace.
+**484 tests collected**, and **45/45 on the evaluation** (`make eval`) with
+temporal isolation at 100% across 25 queries, the gate.
+
+How many of the 484 run depends on what the machine has. All three figures are
+measured, because the difference between them is the point: a suite that skips
+32 tests in CI is not the suite a developer runs.
+
+| Environment | Passed | Skipped | xfailed |
+| --- | --- | --- | --- |
+| Full index + corpus dir (`make test`, ~70-85 s) | 480 | 1 | 3 |
+| Full corpus dir, index hidden | 477 | 4 | 3 |
+| CI: no corpus, judicial-tier `ci.db` only (~30 s) | 452 | 29 | 3 |
+
+The one skip present everywhere is the opt-in network check. The three extra
+skips without the index are the index-gated checks in
+`tests/test_documented_numbers.py`. The remaining CI skips are corpus-gated: the
+18 copyrighted PDFs cannot be in CI, by design. The three xfails are deliberate,
+each a timeline entry whose source needs a human with network access to
+replace.
 
 Measured 2026-09-30. Re-derive with `make test` and `make eval`; the three
 index-derived counts (46 documents, 5,724 chunks, 15 ambiguous seasons) are

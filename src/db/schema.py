@@ -26,6 +26,7 @@ Differs from CLAUDE.md sec.4 in three deliberate, verified ways:
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 from pathlib import Path
 
@@ -42,8 +43,12 @@ PRIMARY_TIERS = ("primary", "judicial")
 TIMELINE_TIER = "timeline"
 ALL_TIERS = ("primary", "judicial", "timeline")
 
-SCHEMA_SQL = f"""
-CREATE TABLE IF NOT EXISTS documents (
+
+def _documents_ddl(name: str, *, if_not_exists: bool) -> str:
+    # One definition serves both a fresh build and migrate()'s table rebuild, so
+    # the constraint a migrated index gets cannot drift from a fresh one's.
+    return f"""
+CREATE TABLE {"IF NOT EXISTS " if if_not_exists else ""}{name} (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     doc_name      TEXT UNIQUE NOT NULL,
     category      TEXT NOT NULL CHECK (category IN
@@ -55,7 +60,10 @@ CREATE TABLE IF NOT EXISTS documents (
                       ('primary', 'judicial', 'timeline')),
     CHECK (start_season <= end_season)
 );
+"""
 
+
+SCHEMA_SQL = f"""{_documents_ddl("documents", if_not_exists=True)}
 CREATE TABLE IF NOT EXISTS document_chunks (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     doc_id        INTEGER NOT NULL,
@@ -109,17 +117,85 @@ def migrate(conn: sqlite3.Connection) -> list[str]:
     applied: list[str] = []
     columns = {r["name"] for r in conn.execute("PRAGMA table_info(documents)")}
     if "source_tier" not in columns:
-        # SQLite cannot add a CHECK constraint to an existing table via ALTER,
-        # so the column carries the default and the constraint is enforced on
-        # rebuild. Existing rows are all governing documents.
+        # ALTER cannot carry a CHECK; the rebuild below adds it. Existing rows
+        # are all governing documents.
         conn.execute("ALTER TABLE documents ADD COLUMN source_tier TEXT "
                      "NOT NULL DEFAULT 'primary'")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_documents_tier "
                      "ON documents (source_tier)")
         applied.append("documents.source_tier added (existing rows -> 'primary')")
+    if not _has_tier_check(conn):
+        _rebuild_documents_with_tier_check(conn)
+        applied.append("documents rebuilt to enforce the source_tier CHECK")
     if applied:
         conn.commit()
     return applied
+
+
+def _has_tier_check(conn: sqlite3.Connection) -> bool:
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'documents'"
+    ).fetchone()
+    return bool(row and re.search(r"CHECK\s*\(\s*source_tier\s+IN", row["sql"], re.I))
+
+
+def _rebuild_documents_with_tier_check(conn: sqlite3.Connection) -> None:
+    """The 12-step rebuild from sqlite.org/lang_altertable.html, steps 1-12.
+
+    Measured on the shipped index: its ``documents`` DDL had ``source_tier`` with no
+    CHECK, because the ALTER path above cannot add one, so ``INSERT ... 'bogus'``
+    succeeded. The renderer treats an unrecognised tier as *unlabelled*, which is
+    how a governing document is shown -- so a junk tier would be cited with a CBA's
+    authority.
+    """
+    bad = conn.execute(
+        "SELECT id, doc_name, source_tier FROM documents WHERE source_tier NOT IN "
+        f"({','.join('?' * len(ALL_TIERS))}) OR source_tier IS NULL", ALL_TIERS
+    ).fetchall()
+    if bad:
+        # Fail rather than coerce. Any coercion target either discards the value
+        # or picks a tier, and 'primary' -- the only default that keeps the row
+        # retrievable -- is precisely the authority the bad value must not gain.
+        # The ALTER path only ever writes 'primary', so reaching this means a
+        # hand-edit; a human should say what the row is.
+        raise ValueError(
+            "cannot enforce source_tier CHECK; rows with invalid tier (fix or "
+            f"delete them, then rerun): {[tuple(r) for r in bad]}"
+        )
+    # PRAGMA foreign_keys is a no-op inside a transaction, so it is set first.
+    # With it ON, DROP TABLE documents would cascade-delete every chunk.
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    try:
+        conn.execute("BEGIN")
+        seq = conn.execute(
+            "SELECT seq FROM sqlite_sequence WHERE name = 'documents'"
+        ).fetchone()
+        conn.execute(_documents_ddl("documents_new", if_not_exists=False))
+        conn.execute(
+            "INSERT INTO documents_new (id, doc_name, category, start_season, "
+            "end_season, source_url, source_tier) SELECT id, doc_name, category, "
+            "start_season, end_season, source_url, source_tier FROM documents")
+        conn.execute("DROP TABLE documents")  # takes its indexes with it
+        conn.execute("ALTER TABLE documents_new RENAME TO documents")
+        if seq is not None:
+            # Copying explicit ids leaves the counter at max(id); if the highest
+            # document was deleted earlier, its id would be reissued to a new
+            # document while vec_chunks may still hold that id.
+            conn.execute("UPDATE sqlite_sequence SET seq = ? WHERE name = 'documents'",
+                         (seq["seq"],))
+        conn.execute("CREATE INDEX idx_documents_seasons "
+                     "ON documents (start_season, end_season)")
+        conn.execute("CREATE INDEX idx_documents_tier ON documents (source_tier)")
+        violations = conn.execute("PRAGMA foreign_key_check").fetchall()
+        if violations:
+            raise sqlite3.IntegrityError(f"foreign_key_check failed: {violations}")
+        conn.execute("COMMIT")
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.execute("PRAGMA foreign_keys = ON")
 
 
 def initialize_database(db_path: str | Path = ":memory:") -> sqlite3.Connection:

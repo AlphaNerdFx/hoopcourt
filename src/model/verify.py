@@ -83,6 +83,15 @@ def normalise(citation: str) -> str:
     real ones and the number would stop being worth looking at.
     """
     text = re.sub(r"\s+", " ", citation).strip()
+    # extract_citations strips the brackets and extract_sources_block used to keep
+    # them, so one citation had two spellings here. CASUAL_SYSTEM asks for the
+    # Sources line *in* brackets, so the compliant answer was the broken one:
+    # "[2023 NBA CBA, ..., p. 37]" cited once inline and once listed scored two
+    # supported plus one fabricated, trustworthy=False on a grounded answer. Fixed
+    # at the comparison so it holds whether or not the model brackets the line.
+    # fullmatch, so a trailing tier label ("... part 99 [court opinion]") survives.
+    if (m := RE_BRACKETED.fullmatch(text)):
+        text = m.group(1).strip()
     text = re.sub(r"\s+([,;.])", r"\1", text)   # "CBA , Article" -> "CBA, Article"
     text = re.sub(r"([,;.])(?=\S)", r"\1 ", text)  # "p.37" -> "p. 37"
     return text.strip().rstrip(".,;").casefold()
@@ -154,7 +163,9 @@ def extract_sources_block(answer: str) -> list[str]:
     """Citation attempts listed under a trailing "Sources:" heading.
 
     Casual Fan mode puts its references here rather than inline, which
-    CLAUDE.md sec.6 asks for, and writes them unbracketed.
+    CLAUDE.md sec.6 asks for. CASUAL_SYSTEM asks for them in square brackets, but
+    a model also writes them bare; both are handled, and a line holding several
+    ("[a] [b]") is split rather than read as one fused, never-supplied citation.
 
     Every line of citation shape is returned, **including ones that were never
     supplied**. Filtering to supplied citations here would mean a model listing
@@ -162,6 +173,9 @@ def extract_sources_block(answer: str) -> list[str]:
     the sec.2.2 failure this module exists to catch, reached from the opposite
     direction.
     """
+    def attempts(text: str) -> list[str]:
+        return extract_citations(text) if "[" in text else [text]
+
     lines = (answer or "").splitlines()
     out: list[str] = []
     start = None
@@ -170,14 +184,14 @@ def extract_sources_block(answer: str) -> list[str]:
             start = i
             first = match.group(1).strip().strip("*_").strip()
             if looks_like_citation(first):
-                out.append(first)
+                out.extend(attempts(first))
             break
     if start is None:
         return []
     for line in lines[start + 1:]:
         candidate = RE_LIST_MARKER.sub("", line.strip()).strip().strip("*_").strip()
         if looks_like_citation(candidate):
-            out.append(candidate)
+            out.extend(attempts(candidate))
     return out
 
 
@@ -209,15 +223,18 @@ def verify_citations(
                     for c in context_chunks if c.get("document")}
 
     report = CitationReport()
-    citations = extract_citations(answer)
     # A trailing "Sources:" list is the other place a citation can appear, and
     # the only place Casual Fan mode puts one. A reference repeated there after
     # being cited inline is one reference written twice, so it is counted once;
-    # a reference that appears only in the list is counted.
-    seen = {normalise(c) for c in citations}
-    for candidate in extract_sources_block(answer):
-        if normalise(candidate) not in seen:
-            seen.add(normalise(candidate))
+    # a reference that appears only in the list is counted. Deduplicating the
+    # whole list, not just the block against the body, matters because a
+    # bracketed Sources line is also matched by extract_citations' scan of the
+    # full answer: reproduced as total=3 for one citation.
+    citations: list[str] = []
+    seen: set[str] = set()
+    for candidate in [*extract_citations(answer), *extract_sources_block(answer)]:
+        if (key := normalise(candidate)) not in seen:
+            seen.add(key)
             citations.append(candidate)
     for citation in citations:
         key = normalise(citation)

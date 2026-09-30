@@ -31,7 +31,10 @@ network access to replace.
 Measured 2026-09-30. Re-derive with `make test` and `make eval`; the three
 index-derived counts (46 documents, 5,724 chunks, 15 ambiguous seasons) are
 asserted by `tests/test_documented_numbers.py`, so a rebuild that moves them
-turns this page red rather than quietly stale.
+fails the suite rather than quietly staling this page. Those three tests skip in
+CI, which builds a smaller judicial-tier index and would otherwise assert the
+wrong numbers; they fire on a machine with the full index, which is where a
+rebuild happens.
 
 Read 45/45 with one caveat: four recall checks were passing on terms that appear
 in half to nearly all of the expected document, so they could not fail. They were

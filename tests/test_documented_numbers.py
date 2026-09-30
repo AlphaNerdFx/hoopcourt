@@ -13,6 +13,13 @@ docstring all say fourteen. The collected suite is 481 tests; four documents say
 460 or 461. Nothing re-derives a computed number when the corpus or the suite
 changes, so it is wrong in every copy at once.
 
+This guard runs only where the full index exists, which is a developer machine:
+CI builds a judicial-tier-only `ci.db` and legitimately has different counts, so
+these tests skip there. That is the correct behaviour -- a guard that fired on
+CI's smaller index would be asserting the wrong numbers -- but it means this is
+a local check, not a merge gate. It fires exactly where the index is rebuilt,
+which is where the counts actually move.
+
 The fix is not "assert every number in the docs". A test count asserted in prose
 fails on every PR that adds a test, which manufactures more drift noise than it
 removes. Guard the numbers that are load-bearing *and* stable: the ones derived

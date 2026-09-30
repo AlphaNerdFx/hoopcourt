@@ -148,7 +148,7 @@ The system strictly bounds prompt size and context retrieval:
      is a redirect status that clients, proxies and browsers act on as one, and
      User Story 1 describes a UI prompt, not a redirect.
      **2023 is not the only such year.** Every document-window boundary is
-     ambiguous, 14 of them in the shipped corpus, including 2011, where
+     ambiguous, 15 of them in the shipped corpus, including 2011, where
      2010-11 is governed by CBA 2005 and 2011-12 by CBA 2011. The set is derived
      from the index by `db.schema.ambiguous_seasons()` rather than hardcoded, so
      re-scoping a document cannot leave a boundary silently unguarded.
@@ -237,15 +237,20 @@ Superseded from the original sequence:
 * **Step 8 (IPFS/BitTorrent)**, replaced by fetch-and-build (sec. 7.1).
 * **Step 9 (Streamlit OCR UI)**, cut; with no OCR it guards an empty queue.
 
-Measured status (2026-09-21): 45/45 on the evaluation with temporal isolation
-at 100%, the gate; 460 tests collected, 456 passing with the index present and
-431 without it, the difference being corpus-dependent tests skipping, plus one
-opt-in network test and three deliberate xfails; index 46 documents (18 PDFs,
-7 opinions, 21 timeline entries) / 5,724 chunks / 0 orphaned vectors. The 45/45
-is measured against recall terms tightened in D18: four checks had been passing
-on terms appearing in 49-95% of the expected document and could not fail. The
-evaluation held 43 questions when D18 was measured; the two colloquial-phrasing
-questions added by D19 took it to 45, which is why older documents say 43/43.
+Measured status lives in **docs/operations/STATUS.md**, which is the single
+source of truth for suite counts, evaluation rates and index size. This file
+deliberately does not restate them: the counts were previously copied into four
+documents and were wrong in all four at once, because nothing re-derives a
+number that is only ever typed. The index-derived figures are asserted by
+`tests/test_documented_numbers.py`, so a rebuild that moves them fails the suite
+instead of rotting the prose.
+
+What does not change with a re-measurement, and so is stated here: the gate is
+temporal isolation at 100%, and the evaluation's pass rate is measured against
+recall terms tightened in D18, where four checks had been passing on terms
+appearing in 49-95% of the expected document and could not fail. The evaluation
+held 43 questions when D18 was measured; the two colloquial-phrasing questions
+added by D19 took it to 45, which is why older documents say 43/43.
 
 Generation is measured separately and is **not reproducible even at temperature
 0** (llama.cpp's GPU forward pass is not bitwise stable), so it is reported as a

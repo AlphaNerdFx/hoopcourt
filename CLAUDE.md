@@ -224,7 +224,7 @@ keeps the CUDA toolchain and the OCR pipeline off the critical path.
 [x] Phase 0: .gitignore before git init (corpus excluded; verified)
 [x] Phase 1: Direct text extraction, 18 PDFs / 3,385 pages   -> src/parser/
 [x] Phase 2: Chunking + embeddings + index population        -> src/ingest/
-[x] Phase 3: Labelled eval set (45 questions) + runner       -> tests/eval/
+[x] Phase 3: Labelled eval set (51 questions) + runner       -> tests/eval/
 [x] Phase 4: FastAPI assembly, token gate, temporal router   -> src/api/
 [x] Phase 5: Prompt templates + generation via Ollama        -> src/model/
 [x] Phase 6: Fetch-and-build distribution + checksums        -> scripts/

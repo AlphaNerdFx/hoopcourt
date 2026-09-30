@@ -490,7 +490,8 @@ question whose answer was never retrieved still scored as recalled. Those four
 were tightened to discriminative terms (each under 30%, most under 3%), which
 dropped the suite to 41/43 and exposed the defect. With D18 it is 43/43 against
 the harder terms. (The evaluation held 43 questions when this was measured. D19
-added two colloquial-phrasing questions, so the same suite now reads 45/45.)
+added two colloquial-phrasing questions, taking the suite to 45/45 at that
+time. See docs/operations/STATUS.md for the current figure.)
 
 This is the blind spot `docs/operations/STATUS.md` had already warned about,
 caught in the act: a green evaluation meant routing was right and nothing bled

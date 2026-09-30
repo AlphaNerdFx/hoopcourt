@@ -20,7 +20,7 @@ commands shown._
 | Source-URL checking | `scripts/fetch_corpus.py --check-urls` |
 | Manifest integrity | `tests/test_manifest.py` (44 checks) |
 
-**484 tests collected**, and **45/45 on the evaluation** (`make eval`) with
+**505 tests collected**, and **51/51 on the evaluation** (`make eval`) with
 temporal isolation at 100% across 25 queries, the gate.
 
 How many of the 484 run depends on what the machine has. All three figures are
@@ -29,9 +29,9 @@ measured, because the difference between them is the point: a suite that skips
 
 | Environment | Passed | Skipped | xfailed |
 | --- | --- | --- | --- |
-| Full index + corpus dir (`make test`, ~70-85 s) | 480 | 1 | 3 |
-| Full corpus dir, index hidden | 477 | 4 | 3 |
-| CI: no corpus, judicial-tier `ci.db` only (~30 s) | 452 | 29 | 3 |
+| Full index + corpus dir (`make test`, ~60-85 s) | 505 | 1 | 3 |
+| Full corpus dir, index hidden | 502 | 4 | 3 |
+| CI: no corpus, judicial-tier `ci.db` only (~30 s) | see the CI log | | |
 
 The one skip present everywhere is the opt-in network check. The three extra
 skips without the index are the index-gated checks in
@@ -48,7 +48,7 @@ CI, which builds a smaller judicial-tier index and would otherwise assert the
 wrong numbers; they fire on a machine with the full index, which is where a
 rebuild happens.
 
-Read 45/45 with one caveat: four recall checks were passing on terms that appear
+Read 51/51 with one caveat: four recall checks were passing on terms that appear
 in half to nearly all of the expected document, so they could not fail. They were
 tightened, which dropped the suite to 41/43 and exposed a real retrieval defect
 (D18). The evaluation held 43 questions at that point; D19 added two
@@ -60,8 +60,8 @@ CATEGORY                 PASS  TOTAL   RATE
 grounded_citation          12     12   100.0%
 refusal                     6      6   100.0%
 temporal_isolation         12     12   100.0%
-trigger_routing            15     15   100.0%
-OVERALL                    45     45   100.0%
+trigger_routing            21     21   100.0%
+OVERALL                    51     51   100.0%
 
 no_bleed            25/25   100.0%     <- the gate
 in_expected_docs    25/25   100.0%

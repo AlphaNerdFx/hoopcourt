@@ -60,7 +60,7 @@ CPU build of torch first, as above. `Embedder` passes `device=None`, so
 sentence-transformers picks the device: with the default wheels it will use CUDA
 if it finds it, and with the CPU build there is nothing to find. Install the CPU
 build unless you actually want GPU embeddings. Both were verified against the
-full evaluation: 45/45, isolation at 100%.
+full evaluation: 51/51, isolation at 100%.
 
 The corpus is not in this repository and never will be, see
 [DATA_SOURCES.md](docs/corpus/DATA_SOURCES.md). You download the documents from official and
@@ -155,7 +155,7 @@ nearest plausible text.
 Stated plainly, because a system about grounding should be honest about its own.
 
 **Retrieval is the strong half.** Routing, era isolation, recall and refusal are
-45/45 across the evaluation, exactly reproducible, and measured without an LLM.
+51/51 across the evaluation, exactly reproducible, and measured without an LLM.
 Temporal isolation is a hard gate: any leak exits non-zero.
 
 **Generation is the weak half, and its number is a range.** Six full runs of

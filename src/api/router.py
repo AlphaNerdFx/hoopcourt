@@ -158,11 +158,17 @@ def retrieval_text(query: str, route: dict) -> str:
 # suppresses correct routing. Measured against the index, "reserve clause" occurs
 # 0 times in documents governing 1995 or later and 24 times before, so
 # `requires_context: False`. Re-run that count before adding another.
+#
+# A cue must discriminate between eras or it does nothing. "tiebreak" was once a
+# "coin flip" cue, and "Is a coin flip still used as a tiebreak today?" routed to
+# 1984 because the two sit within 6 words, though playoff seeding uses tiebreaks
+# now. The router has no negative-cue ("still", "today") mechanism, and adding
+# one would be a new code path where deleting one cue removes the misfire.
 TRIGGER_CONTEXTS: dict[str, dict[str, Any]] = {
     "coin flip": {
         "era": "pre_1985_lottery",
         "context_keys": ["draft", "lottery", "1985", "worst", "selection",
-                         "first pick", "territorial", "tiebreak"],
+                         "first pick", "territorial"],
         "base_year": 1984,
     },
     "aba": {
@@ -191,6 +197,16 @@ TRIGGER_CONTEXTS: dict[str, dict[str, Any]] = {
         "base_year": 1965,
     },
 }
+
+# Explicit present-tense context. Cue-list edits cannot reach this class: measured
+# on the router with "tiebreak" already removed, "Is a coin flip used in today's draft
+# lottery?" (1984), "Do teams still get a territorial pick in the modern draft?"
+# (1965) and "Is the reserve clause still part of today's CBA?" (1975) all routed
+# historical, the last on presence alone. Bare "still" and "now" are deliberately
+# absent: "was it still in force back then" is past-tense, and only an unambiguous
+# marker may veto a keyword. An explicit year never reaches this set (step B).
+MODERN_MARKERS = frozenset({"today", "todays", "modern", "current", "currently",
+                            "nowadays", "present-day"})
 
 DECADE_MAP = {
     r"\b(forties|40s|1940s)\b": 1948,
@@ -290,7 +306,9 @@ class TemporalRouter:
         # C. Historical trigger terms. Extinct ones fire on presence; the rest
         # need a context cue nearby to avoid hijacking a modern question.
         lowered_tokens = _tokens(query)
-        for trigger, cfg in TRIGGER_CONTEXTS.items():
+        modern = any(t.removesuffix("'s") in MODERN_MARKERS or t in MODERN_MARKERS
+                     for t in lowered_tokens)
+        for trigger, cfg in ({} if modern else TRIGGER_CONTEXTS).items():
             if not cfg.get("requires_context", True):
                 fires = bool(_key_positions(lowered_tokens, trigger))
             else:

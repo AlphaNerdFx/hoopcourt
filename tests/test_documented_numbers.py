@@ -36,7 +36,7 @@ from src.db.schema import ambiguous_seasons
 
 INDEX = pathlib.Path(__file__).resolve().parents[1] / "nba_legal.db"
 
-pytestmark = pytest.mark.skipif(
+needs_index = pytest.mark.skipif(
     not INDEX.exists(), reason="index not present (it is gitignored)"
 )
 
@@ -62,6 +62,7 @@ CLAIMS = {
 }
 
 
+@needs_index
 @pytest.fixture
 def index_conn():
     conn = get_vector_db_connection(INDEX)
@@ -69,6 +70,7 @@ def index_conn():
     conn.close()
 
 
+@needs_index
 @pytest.mark.parametrize("claim", sorted(CLAIMS))
 def test_the_documented_number_matches_the_live_one(claim, index_conn):
     documented, derive, stated_in = CLAIMS[claim]
@@ -81,4 +83,28 @@ def test_the_documented_number_matches_the_live_one(claim, index_conn):
         f"Stated in: {stated_in}.\n"
         f"If the corpus was rebuilt this is expected -- update those files and "
         f"the CLAIMS table together. If it was not, something changed the index."
+    )
+
+
+# The evaluation set is a file in this repo, not a derived value, so this check
+# needs no index and runs in CI -- unlike the three above. It earns its place
+# because the count is quoted in eight documents: adding six routing questions
+# for the F1 fix staled every one of them in a single commit. A stored count is
+# only safe until the stored thing changes, and then every copy rots at once.
+EVAL_QUESTIONS = 51
+EVAL_QUESTIONS_STATED_IN = (
+    "docs/operations/STATUS.md (the SSOT), README.md, CLAUDE.md sec.8 phase 3, "
+    "docs/project/ROADMAP.md, docs/evaluation/GENERATION_MEASUREMENT.md, "
+    "docs/sessions/HANDOVER.md"
+)
+
+
+def test_the_documented_evaluation_size_matches_the_question_file():
+    import yaml
+    path = pathlib.Path(__file__).resolve().parent / "eval" / "questions.yaml"
+    actual = len(yaml.safe_load(path.read_text(encoding="utf-8"))["questions"])
+    assert actual == EVAL_QUESTIONS, (
+        f"documented evaluation size is {EVAL_QUESTIONS}, {path.name} holds {actual}.\n"
+        f"Stated in: {EVAL_QUESTIONS_STATED_IN}.\n"
+        "Update those and this constant together."
     )

@@ -112,7 +112,7 @@ See [docs/project/VERSIONING.md](docs/project/VERSIONING.md) for what ships when
       Indistinguishable at n=12 on a non-reproducible stack; what it establishes
       is that casual is not worse, after a 100% failure rate that was invisible
       for the life of the project because nothing ran it.
-- [ ] Run both styles over all 45 questions, repeated, before quoting a headline
+- [ ] Run both styles over every eval question, repeated, before quoting a headline
       figure for either. A citation number without its style is incomplete.
 - [x] "What is the Stepien Rule?" retrieved the Official Rulebook rather than
       the governing passage. Fixed by D19: colloquial names are expanded into

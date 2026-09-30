@@ -26,7 +26,7 @@ Run at handover time. Nothing is known-broken.
 * `ruff check src scripts tests` — exit 0
 * `pytest tests/ -q` — exit 0, **461 collected**, 1 skipped (opt-in network
   test), 3 xfail (deliberate, `tests/test_timeline_sources.py`)
-* `run_eval.py --db nba_legal.db` — exit 0, **45/45**, temporal isolation 100%
+* `run_eval.py --db nba_legal.db` — exit 0, **51/51**, temporal isolation 100%
   across 25 queries
 * `audit_corpus.py` — clean, 3,385 PDF pages and 107 text blocks
 * CI green on `master`; the `Release` workflow succeeded end to end

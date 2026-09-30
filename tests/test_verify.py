@@ -303,3 +303,67 @@ def test_a_reference_only_in_the_list_is_still_counted():
     report = verify_citations(answer, CHUNKS)
     assert report.total == 2
     assert len(report.supported) == 2
+
+
+# --- CASUAL_SYSTEM asks for each Sources entry "in square brackets", and every
+# --- test above wrote the block unbracketed: the format the prompt never asks
+# --- for. A compliant answer was the one that scored as fabricated.
+
+BODY = (
+    "The maximum is set out in {inline} and nothing else in the agreement "
+    "displaces it for a standard contract signed in that year, which is why "
+    "teams plan around it."
+)
+CITE = "2023 NBA CBA, Article II, Section 7, p. 37"
+
+
+@pytest.mark.parametrize("inline", ["[" + CITE + "]", "no inline citation"])
+def test_a_bracketed_sources_line_as_casual_mode_is_told_to_write_it_counts_once(inline):
+    """Reproduced before the fix: inline plus a bracketed Sources line reported
+    total=3, one of them "[2023 NBA CBA, ...]" as fabricated, so a fully grounded
+    answer came back trustworthy=False. The list-only variant reported the
+    bracketed spelling as fabricated as well."""
+    answer = BODY.format(inline=inline) + f"\n\nSources: [{CITE}]"
+    report = verify_citations(answer, CHUNKS)
+    assert report.supported == [CITE]
+    assert report.fabricated == []
+    assert report.ok
+
+
+def test_a_bracketed_sources_list_with_one_reference_per_line_counts_once_each():
+    answer = (
+        BODY.format(inline=f"[{CITE}]") + "\n\nSources:\n"
+        f"- [{CITE}]\n"
+        "- [Robertson v. NBA (S.D.N.Y. 1975), part 18]"
+    )
+    report = verify_citations(answer, CHUNKS)
+    assert report.total == 2
+    assert report.ok
+
+
+def test_several_bracketed_references_on_the_sources_line_are_split():
+    """"Sources: [a] [b]" read as one string is a citation nobody supplied."""
+    answer = (
+        BODY.format(inline="the record")
+        + f"\n\nSources: [{CITE}] [Robertson v. NBA (S.D.N.Y. 1975), part 18]"
+    )
+    assert extract_sources_block(answer) == [
+        CITE, "Robertson v. NBA (S.D.N.Y. 1975), part 18"]
+    report = verify_citations(answer, CHUNKS)
+    assert report.total == 2
+    assert report.ok
+
+
+def test_a_fabricated_reference_in_a_bracketed_sources_line_is_still_caught():
+    """Normalising the brackets must not launder an invented pinpoint."""
+    answer = BODY.format(inline="the record") + (
+        f"\n\nSources: [{CITE}] [2023 NBA CBA, Article IX, p. 999]")
+    report = verify_citations(answer, CHUNKS)
+    assert report.fabricated == ["2023 NBA CBA, Article IX, p. 999"]
+    assert not report.ok
+
+
+def test_normalise_ignores_an_outer_bracket_pair_but_keeps_a_trailing_tier_label():
+    assert normalise(f"[{CITE}]") == normalise(CITE)
+    label = "Robertson v. NBA (S.D.N.Y. 1975), part 18 [court opinion]"
+    assert normalise(label).endswith("[court opinion]")

@@ -189,7 +189,7 @@ that. Tightening them to discriminative terms exposed a real retrieval defect
 (D18: the query's year was outranking the provision with dated examples of it),
 and fixing that took the suite to 43/43 against the harder terms. The
 evaluation held 43 questions at that point; D19 later added two, taking it to
-45/45.
+51/51.
 
 **What this means for the citation figures above.** They were measured before the
 retrieval fix, so some fraction of the failures were the model correctly

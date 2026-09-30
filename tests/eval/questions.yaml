@@ -268,6 +268,51 @@ questions:
   expect_year: CURRENT
   expect_trigger: null
 
+# Regression: "tiebreak" was a coin-flip cue, so this routed to 1984 (router.py).
+- id: trigger-coin-flip-tiebreak-today
+  category: trigger_routing
+  question: "Is a coin flip still used as a tiebreak today?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_trigger: null
+
+# Regression: a present-tense marker vetoes a historical keyword (router.py
+# MODERN_MARKERS); an explicit year still beats the marker.
+- id: trigger-coin-flip-lottery-today
+  category: trigger_routing
+  question: "Is a coin flip used in today's draft lottery?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_trigger: null
+
+- id: trigger-territorial-pick-modern
+  category: trigger_routing
+  question: "Do teams still get a territorial pick in the modern draft?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_trigger: null
+
+- id: trigger-reserve-clause-today
+  category: trigger_routing
+  question: "Is the reserve clause still part of today's CBA?"
+  expect_route: default_modern
+  expect_year: CURRENT
+  expect_trigger: null
+
+- id: trigger-year-beats-modern-marker
+  category: trigger_routing
+  question: "Was the reserve clause still in force in 1970, unlike today?"
+  expect_route: strict_season_filter
+  expect_year: 1970
+  expect_trigger: null
+
+- id: trigger-coin-flip-year-beats-keyword
+  category: trigger_routing
+  question: "How did the coin flip decide the 1969 draft?"
+  expect_route: strict_season_filter
+  expect_year: 1969
+  expect_trigger: null
+
 - id: trigger-reserve-clause
   category: trigger_routing
   question: "What was the reserve clause and how did the Oscar Robertson suit end it?"

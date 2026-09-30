@@ -6,8 +6,8 @@ import sqlite3
 import pytest
 from sqlite_vec import serialize_float32
 
-from src.db.connection import engine_versions
-from src.db.schema import EMBEDDING_DIM, initialize_database
+from src.db.connection import engine_versions, get_vector_db_connection
+from src.db.schema import EMBEDDING_DIM, SCHEMA_SQL, initialize_database, migrate
 
 
 def _seed_one(conn, season=2023):
@@ -214,3 +214,126 @@ def test_text_quality_on_empty_index(conn):
 
     q = text_quality(conn)
     assert q == {"chunks": 0, "fused_chunks": 0, "fused_pct": 0.0, "by_document": {}}
+
+
+# --------------------------------------------------------------- migration
+
+# The shape of an index built before source_tier existed.
+_LEGACY_DOCUMENTS = """
+CREATE TABLE documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, doc_name TEXT UNIQUE NOT NULL,
+    category TEXT NOT NULL CHECK (category IN
+        ('Historical', 'Current Operational', 'Current Governing')),
+    start_season INTEGER NOT NULL, end_season INTEGER NOT NULL,
+    source_url TEXT NOT NULL, CHECK (start_season <= end_season));
+"""
+_BOGUS_TIER = ("INSERT INTO documents (doc_name, category, start_season, end_season,"
+               " source_url, source_tier) VALUES ('bogus', 'Historical', 1, 2, 'u',"
+               " 'bogus')")
+
+
+def _legacy_index(path, *, with_tier_column):
+    """An on-disk index as an older build left it. With the column but no CHECK
+    it is exactly the shape measured in the shipped nba_legal.db."""
+    conn = get_vector_db_connection(path)
+    conn.execute(_LEGACY_DOCUMENTS)
+    if with_tier_column:
+        conn.execute("ALTER TABLE documents ADD COLUMN source_tier TEXT "
+                     "NOT NULL DEFAULT 'primary'")
+    conn.executescript(SCHEMA_SQL)  # everything else; documents already exists
+    return conn
+
+
+def _objects(conn):
+    return {(r["type"], r["name"]) for r in conn.execute(
+        "SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
+        " AND name NOT LIKE 'vec_chunks_%'")}
+
+
+def test_migrating_a_pre_tier_index_yields_a_table_that_rejects_an_invalid_tier(tmp_path):
+    conn = get_vector_db_connection(tmp_path / "old.db")
+    conn.execute(_LEGACY_DOCUMENTS)
+    conn.commit()
+    migrate(conn)
+    with pytest.raises(sqlite3.IntegrityError, match="source_tier"):
+        conn.execute(_BOGUS_TIER)
+
+
+def test_a_column_only_index_gains_the_check_ALTER_cannot_add(tmp_path):
+    conn = _legacy_index(tmp_path / "old.db", with_tier_column=True)
+    conn.execute(_BOGUS_TIER)  # the defect: accepted before the migration
+    conn.rollback()
+    migrate(conn)
+    with pytest.raises(sqlite3.IntegrityError, match="source_tier"):
+        conn.execute(_BOGUS_TIER)
+
+
+def test_the_rebuild_preserves_rows_foreign_key_cascade_trigger_and_indexes(tmp_path):
+    conn = _legacy_index(tmp_path / "old.db", with_tier_column=True)
+    keep, chunk = _seed_one(conn)
+    doomed = conn.execute(
+        "INSERT INTO documents (doc_name, category, start_season, end_season,"
+        " source_url, source_tier) VALUES ('opinion', 'Historical', 1960, 1970, 'u',"
+        " 'judicial')").lastrowid
+    conn.execute("DELETE FROM documents WHERE id = ?", (doomed,))
+    conn.commit()
+    before_rows = conn.execute("SELECT * FROM documents ORDER BY id").fetchall()
+    before_objects = _objects(conn)
+    before_seq = conn.execute(
+        "SELECT seq FROM sqlite_sequence WHERE name = 'documents'").fetchone()[0]
+
+    assert migrate(conn)
+
+    assert [tuple(r) for r in conn.execute("SELECT * FROM documents ORDER BY id")] == [
+        tuple(r) for r in before_rows]
+    assert conn.execute("SELECT COUNT(*) FROM document_chunks").fetchone()[0] == 1, (
+        "DROP TABLE ran with foreign keys on and cascaded the chunks away")
+    assert _objects(conn) == before_objects
+    fk = conn.execute("PRAGMA foreign_key_list(document_chunks)").fetchone()
+    assert (fk["table"], fk["on_delete"]) == ("documents", "CASCADE")
+    assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    # The counter survives, so a deleted document's id is not reissued while
+    # vec_chunks may still carry it.
+    assert conn.execute("SELECT seq FROM sqlite_sequence WHERE name = 'documents'"
+                        ).fetchone()[0] == before_seq
+
+    # Cascade and trigger still fire against the rebuilt table.
+    conn.execute("DELETE FROM documents WHERE id = ?", (keep,))
+    conn.commit()
+    assert conn.execute("SELECT COUNT(*) FROM document_chunks").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM vec_chunks WHERE chunk_id = ?",
+                        (chunk,)).fetchone()[0] == 0
+
+
+def test_a_migrated_index_has_the_same_objects_as_a_fresh_one(tmp_path):
+    conn = _legacy_index(tmp_path / "old.db", with_tier_column=True)
+    migrate(conn)
+    assert _objects(conn) == _objects(initialize_database(":memory:"))
+
+
+def test_migrate_is_idempotent_and_reports_no_second_change(tmp_path):
+    conn = _legacy_index(tmp_path / "old.db", with_tier_column=True)
+    _seed_one(conn)
+    assert migrate(conn)
+    ddl = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'documents'"
+                       ).fetchone()[0]
+    assert migrate(conn) == []
+    assert conn.execute("SELECT sql FROM sqlite_master WHERE name = 'documents'"
+                        ).fetchone()[0] == ddl
+    assert migrate(initialize_database(":memory:")) == []
+
+
+def test_a_row_with_an_invalid_tier_fails_the_migration_and_changes_nothing(tmp_path):
+    # Coercing to 'primary' would present a junk tier with a CBA's authority, so
+    # the migration refuses and names the row instead.
+    conn = _legacy_index(tmp_path / "old.db", with_tier_column=True)
+    _seed_one(conn)
+    conn.execute(_BOGUS_TIER)
+    conn.commit()
+    before = _objects(conn)
+    with pytest.raises(ValueError, match="bogus"):
+        migrate(conn)
+    assert conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 2
+    assert conn.execute("SELECT COUNT(*) FROM document_chunks").fetchone()[0] == 1
+    assert _objects(conn) == before
+    assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1

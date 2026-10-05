@@ -20,7 +20,7 @@ fastapi~=0.115
 # developer machine and pulled a starlette whose TestClient depends on a
 # different HTTP client. Local and CI were not running the same stack. Bounded
 # to the range the suite is actually green against.
-starlette>=0.40,<0.53
+starlette>=1.7.0,<1.8
 uvicorn[standard]~=0.34
 pydantic~=2.13
 
